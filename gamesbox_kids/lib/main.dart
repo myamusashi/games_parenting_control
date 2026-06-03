@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
-import 'screens/splash_screen.dart';
+import 'services/firebase_service.dart';
+import 'screens/pairing_screen.dart';
+import 'screens/games_list_screen.dart';
 
-void main() {
-  runApp(const GameBoxApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await FirebaseService.init();
+  runApp(const KidsApp());
 }
 
-class GameBoxApp extends StatelessWidget {
-  const GameBoxApp({super.key});
+class KidsApp extends StatelessWidget {
+  const KidsApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'GameBox Parent',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6C63FF),
-          brightness: Brightness.dark,
-        ),
-        useMaterial3: true,
-        fontFamily: 'Roboto',
-      ),
-      home: const SplashScreen(),
+      title: 'GamesBox Kids',
+      theme: ThemeData(primarySwatch: Colors.green),
+      home: const PairingScreen(),
+      routes: {
+        '/pairing': (context) => const PairingScreen(),
+        '/games': (context) => const GamesListScreen(),
+      },
     );
   }
 }
