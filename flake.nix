@@ -54,6 +54,7 @@
 
                     packages = with pkgs; [
                         flutter
+                        firebase-tools
                         androidSdk
                         jdk17
                         mesa
@@ -64,36 +65,37 @@
                     ];
 
                     shellHook = ''
-                        export VK_ICD_FILENAMES="${mesaLib}/share/vulkan/icd.d/intel_icd.x86_64.json"
-                        export LD_LIBRARY_PATH="${glvndLib}/lib:${mesaLib}/lib''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-                        export LIBGL_DRIVERS_PATH="${mesaLib}/lib/dri"
-                        export EGL_PLATFORM=x11
-                        export PKG_CONFIG_EXECUTABLE="${pkgs.pkg-config}/bin/pkg-config"
-                        export DISPLAY="''${DISPLAY:-:0}"
-                        export QT_QPA_PLATFORM=xcb
-                        export ANDROID_AAPT2="${androidSdk}/libexec/android-sdk/build-tools/35.0.0/aapt2"
-                        export ANDROID_CMAKE="${pkgs.cmake}/bin/cmake"
-                        export ANDROID_AVD_HOME="$HOME/.android/avd"
-                        export ANDROID_EMULATOR_HOME="$HOME/.android"
-                        export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidSdk}/libexec/android-sdk/build-tools/35.0.0/aapt2"
+                                          export PATH=$HOME/.pub-cache/bin:$PATH
+                                          export VK_ICD_FILENAMES="${mesaLib}/share/vulkan/icd.d/intel_icd.x86_64.json"
+                                          export LD_LIBRARY_PATH="${glvndLib}/lib:${mesaLib}/lib''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+                                          export LIBGL_DRIVERS_PATH="${mesaLib}/lib/dri"
+                                          export EGL_PLATFORM=x11
+                                          export PKG_CONFIG_EXECUTABLE="${pkgs.pkg-config}/bin/pkg-config"
+                                          export DISPLAY="''${DISPLAY:-:0}"
+                                          export QT_QPA_PLATFORM=xcb
+                                          export ANDROID_AAPT2="${androidSdk}/libexec/android-sdk/build-tools/35.0.0/aapt2"
+                                          export ANDROID_CMAKE="${pkgs.cmake}/bin/cmake"
+                                          export ANDROID_AVD_HOME="$HOME/.android/avd"
+                                          export ANDROID_EMULATOR_HOME="$HOME/.android"
+                                          export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidSdk}/libexec/android-sdk/build-tools/35.0.0/aapt2"
 
-                        if [ -f android/gradle.properties ]; then
-                          sed -i './gamesbox_kids/android.aapt2FromMavenOverride/d' ./gamesbox_kids/android/gradle.properties
-						  sed -i './gamesbox_parent/android.aapt2FromMavenOverride/d' ./gamesbox_parent/android/gradle.properties
-                        fi
-                        echo "android.aapt2FromMavenOverride=${androidSdk}/libexec/android-sdk/build-tools/35.0.0/aapt2" >> ./gamesbox_kids/android/gradle.properties
-						echo "android.aapt2FromMavenOverride=${androidSdk}/libexec/android-sdk/build-tools/35.0.0/aapt2" >> ./gamesbox_parent/android/gradle.properties
+                                          if [ -f android/gradle.properties ]; then
+                                            sed -i './gamesbox_kids/android.aapt2FromMavenOverride/d' ./gamesbox_kids/android/gradle.properties
+                          sed -i './gamesbox_parent/android.aapt2FromMavenOverride/d' ./gamesbox_parent/android/gradle.properties
+                                          fi
+                                          echo "android.aapt2FromMavenOverride=${androidSdk}/libexec/android-sdk/build-tools/35.0.0/aapt2" >> ./gamesbox_kids/android/gradle.properties
+                        echo "android.aapt2FromMavenOverride=${androidSdk}/libexec/android-sdk/build-tools/35.0.0/aapt2" >> ./gamesbox_parent/android/gradle.properties
 
+                                          {
+                                            echo "sdk.dir=$ANDROID_SDK_ROOT"
+                                            echo "cmake.dir=${pkgs.cmake}"
+                                            echo "ndk.dir=$ANDROID_SDK_ROOT/ndk/28.2.13676358"
+                                          } > ./gamesbox_kids/android/local.properties
                         {
-                          echo "sdk.dir=$ANDROID_SDK_ROOT"
-                          echo "cmake.dir=${pkgs.cmake}"
-                          echo "ndk.dir=$ANDROID_SDK_ROOT/ndk/28.2.13676358"
-                        } > ./gamesbox_kids/android/local.properties
-						{
-                          echo "sdk.dir=$ANDROID_SDK_ROOT"
-                          echo "cmake.dir=${pkgs.cmake}"
-                          echo "ndk.dir=$ANDROID_SDK_ROOT/ndk/28.2.13676358"
-                        } > ./gamesbox_parent/android/local.properties
+                                            echo "sdk.dir=$ANDROID_SDK_ROOT"
+                                            echo "cmake.dir=${pkgs.cmake}"
+                                            echo "ndk.dir=$ANDROID_SDK_ROOT/ndk/28.2.13676358"
+                                          } > ./gamesbox_parent/android/local.properties
                     '';
                 };
             };

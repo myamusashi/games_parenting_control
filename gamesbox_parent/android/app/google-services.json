@@ -1,0 +1,87 @@
+{
+  "project_info": {
+    "project_number": "82187038962",
+    "firebase_url": "https://belajar-flutter-bd6b5-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "belajar-flutter-bd6b5",
+    "storage_bucket": "belajar-flutter-bd6b5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:82187038962:android:f55e15313938141b39e06b",
+        "android_client_info": {
+          "package_name": "com.example.games_parenting_control"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDsPXKWFaAKdNcmtF9OTCTQ9QPQksv8ZQs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:82187038962:android:94bc32ceda488ba039e06b",
+        "android_client_info": {
+          "package_name": "com.example.latihan_firebase"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDsPXKWFaAKdNcmtF9OTCTQ9QPQksv8ZQs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:82187038962:android:c5394792449a4fb439e06b",
+        "android_client_info": {
+          "package_name": "com.example.pert15"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDsPXKWFaAKdNcmtF9OTCTQ9QPQksv8ZQs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:82187038962:android:189d6a7f78879c0d39e06b",
+        "android_client_info": {
+          "package_name": "com.example.pert15_revisi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDsPXKWFaAKdNcmtF9OTCTQ9QPQksv8ZQs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
