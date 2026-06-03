@@ -3,6 +3,7 @@ import '../services/auth_service.dart';
 import 'games_list_screen.dart';
 import 'pairing_setup_screen.dart';
 import 'time_limit_screen.dart';
+import 'store_share_handler.dart';
 
 class ParentDashboardScreen extends StatelessWidget {
   const ParentDashboardScreen({super.key});
@@ -31,11 +32,12 @@ class ParentDashboardScreen extends StatelessWidget {
             const SizedBox(height: 8),
             ElevatedButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GamesListScreen())), icon: const Icon(Icons.videogame_asset), label: const Text('Manage Games')),
             const SizedBox(height: 8),
+            ElevatedButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StoreShareHandler())), icon: const Icon(Icons.share), label: const Text('Add Game from Store')),
+            const SizedBox(height: 8),
             ElevatedButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TimeLimitScreen())), icon: const Icon(Icons.timer), label: const Text('Daily Time Limits')),
             const SizedBox(height: 16),
             const Text('Quick Actions', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            // Additional dashboard info (children list, usage) can be placed here
             Expanded(child: Center(child: Text('Welcome, Parent!'))),
           ],
         ),
