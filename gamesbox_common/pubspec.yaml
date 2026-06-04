@@ -1,0 +1,16 @@
+name: gamesbox_common
+description: Shared library containing models and services for gamesbox applications.
+version: 1.0.0
+publish_to: 'none'
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  shared_preferences: ^2.5.5
+  firebase_core: ^4.10.0
+  firebase_auth: ^6.5.2
+  firebase_database: ^12.4.2

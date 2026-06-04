@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../services/storage_service.dart';
-import '../services/firebase_service.dart';
+import 'package:gamesbox_common/gamesbox_common.dart';
 import '../services/otp_service.dart';
-import 'home_screen.dart';
 import 'pairing_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -274,9 +272,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
+                color: Colors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.withOpacity(0.5)),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
               ),
               child: Row(
                 children: [
@@ -369,9 +367,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             width: 120,
             height: 120,
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
+              color: Colors.green.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(60),
-              border: Border.all(color: Colors.green.withOpacity(0.3), width: 2),
+              border: Border.all(color: Colors.green.withValues(alpha: 0.3), width: 2),
             ),
             child: const Icon(
               Icons.check_circle_rounded,
@@ -396,7 +394,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withValues(alpha: 0.7),
                 height: 1.5,
               ),
             ),

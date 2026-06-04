@@ -1,4 +1,4 @@
-import 'package:games_parenting_control/services/storage_service.dart';
+import 'package:gamesbox_common/gamesbox_common.dart';
 
 import 'register_screen.dart';
 import 'package:flutter/material.dart';
@@ -78,7 +78,7 @@ class _SplashScreenState extends State<SplashScreen>
                     borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF6C63FF).withOpacity(0.5),
+                        color: const Color(0xFF6C63FF).withValues(alpha: 0.5),
                         blurRadius: 32,
                         spreadRadius: 4,
                       ),

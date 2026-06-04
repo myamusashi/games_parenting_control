@@ -1,5 +1,5 @@
 import 'package:firebase_database/firebase_database.dart';
-import '../models/game_model.dart';
+import 'package:gamesbox_common/gamesbox_common.dart';
 
 class GamesService {
   final DatabaseReference _ref = FirebaseDatabase.instance.ref().child('games');

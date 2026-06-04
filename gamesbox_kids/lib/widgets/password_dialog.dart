@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:games_parenting_control/services/storage_service.dart';
+import 'package:gamesbox_common/gamesbox_common.dart';
 
 class PasswordDialog extends StatefulWidget {
   final VoidCallback onSuccess;
@@ -83,7 +83,7 @@ class _PasswordDialogState extends State<PasswordDialog> {
                   width: 90,
                   height: 90,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
+                    color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(24),
                   ),
                   child: const Icon(
@@ -112,7 +112,7 @@ class _PasswordDialogState extends State<PasswordDialog> {
                     'Masukkan PIN untuk masuk sebagai Orang Tua',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.6),
+                      color: Colors.white.withValues(alpha: 0.6),
                       fontSize: 16,
                       height: 1.4,
                     ),
@@ -132,18 +132,18 @@ class _PasswordDialogState extends State<PasswordDialog> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: _isError
-                            ? Colors.redAccent.withOpacity(0.8)
+                            ? Colors.redAccent.withValues(alpha: 0.8)
                             : (isFilled ? Colors.white : Colors.transparent),
                         border: Border.all(
                           color: _isError
                               ? Colors.redAccent
-                              : Colors.white.withOpacity(0.5),
+                              : Colors.white.withValues(alpha: 0.5),
                           width: 2.5,
                         ),
                         boxShadow: isFilled && !_isError
                             ? [
                                 BoxShadow(
-                                  color: Colors.white.withOpacity(0.4),
+                                  color: Colors.white.withValues(alpha: 0.4),
                                   blurRadius: 12,
                                   spreadRadius: 2,
                                 ),
@@ -178,7 +178,7 @@ class _PasswordDialogState extends State<PasswordDialog> {
                 Text(
                   'Lupa PIN? Hubungi admin perangkat',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.3),
+                    color: Colors.white.withValues(alpha: 0.3),
                     fontSize: 13,
                   ),
                 ),
@@ -219,9 +219,9 @@ class _PasswordDialogState extends State<PasswordDialog> {
           width: 90,
           height: 65,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.12),
+            color: Colors.white.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withOpacity(0.05), width: 1),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 1),
           ),
           alignment: Alignment.center,
           child: Text(
@@ -247,7 +247,7 @@ class _PasswordDialogState extends State<PasswordDialog> {
           width: 90,
           height: 65,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.08),
+            color: Colors.white.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(20),
           ),
           alignment: Alignment.center,

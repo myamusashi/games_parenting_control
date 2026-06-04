@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/time_limit_service.dart';
-import '../models/time_limit_model.dart';
+import 'package:gamesbox_common/gamesbox_common.dart';
 
 class TimeLimitScreen extends StatefulWidget {
   const TimeLimitScreen({super.key});

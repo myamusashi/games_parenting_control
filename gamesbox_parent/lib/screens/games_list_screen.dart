@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../services/games_service.dart';
 import '../widgets/game_card.dart';
-import '../models/game_model.dart';
+import 'package:gamesbox_common/gamesbox_common.dart';
 import 'add_game_screen.dart';
 
 class GamesListScreen extends StatefulWidget {

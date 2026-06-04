@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:installed_apps/installed_apps.dart';
 import 'package:installed_apps/app_info.dart';
-import '../models/game_entry.dart';
-import '../services/storage_service.dart';
+import 'package:gamesbox_common/gamesbox_common.dart';
 
 class AppSelectionScreen extends StatefulWidget {
   const AppSelectionScreen({super.key});

@@ -176,6 +176,13 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  gamesbox_common:
+    dependency: "direct main"
+    description:
+      path: "../gamesbox_common"
+      relative: true
+    source: path
+    version: "1.0.0"
   http:
     dependency: transitive
     description:

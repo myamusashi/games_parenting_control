@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/storage_service.dart';
+import 'package:gamesbox_common/gamesbox_common.dart';
 import 'home_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -200,9 +200,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           width: 90,
           height: 65,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.08),
+            color: Colors.white.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withOpacity(0.05), width: 1),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 1),
           ),
           alignment: Alignment.center,
           child: Text(
@@ -228,7 +228,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           width: 90,
           height: 65,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
+            color: Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(20),
           ),
           alignment: Alignment.center,

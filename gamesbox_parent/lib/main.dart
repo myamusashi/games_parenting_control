@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/parent_dashboard_screen.dart';
 import 'screens/login_screen.dart';
-import 'services/firebase_service.dart';
+import 'package:gamesbox_common/gamesbox_common.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

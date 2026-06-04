@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:http/http.dart' as http;
 import '../services/games_service.dart';
-import '../models/game_model.dart';
+import 'package:gamesbox_common/gamesbox_common.dart';
 
 class StoreShareHandler extends StatefulWidget {
   const StoreShareHandler({super.key});
@@ -24,16 +24,29 @@ class _StoreShareHandlerState extends State<StoreShareHandler> {
   void initState() {
     super.initState();
     // handle initial share (when app launched via share)
-    ReceiveSharingIntent.getInitialText().then((value) {
-      if (value != null && value.isNotEmpty) _handleSharedText(value);
+    ReceiveSharingIntent.instance.getInitialMedia().then((
+      List<SharedMediaFile> value,
+    ) {
+      if (value.isNotEmpty) {
+        final sharedText = value.first.path;
+        _handleSharedText(sharedText);
+        // Clear intent data so it doesn't trigger again on app restart
+        ReceiveSharingIntent.instance.reset();
+      }
     });
 
     // handle while app is running
-    _sub = ReceiveSharingIntent.getTextStream().listen((value) {
-      if (value != null && value.isNotEmpty) _handleSharedText(value);
-    }, onError: (err) {
-      // ignore
-    });
+    _sub = ReceiveSharingIntent.instance.getMediaStream().listen(
+      (List<SharedMediaFile> value) {
+        if (value.isNotEmpty) {
+          final sharedText = value.first.path;
+          _handleSharedText(sharedText);
+        }
+      },
+      onError: (err) {
+        // ignore
+      },
+    );
   }
 
   @override
@@ -71,7 +84,8 @@ class _StoreShareHandlerState extends State<StoreShareHandler> {
       if (fallback != null) {
         _extractedStore = fallback['store'];
         _extractedPackage = fallback['package'];
-        if (_extractedStore == 'play') _extractedTitle = await _fetchPlayStoreTitle(_extractedPackage!);
+        if (_extractedStore == 'play')
+          _extractedTitle = await _fetchPlayStoreTitle(_extractedPackage!);
       }
     }
 
@@ -80,7 +94,11 @@ class _StoreShareHandlerState extends State<StoreShareHandler> {
     if (_extractedPackage == null) {
       // show cannot extract
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not extract app id from shared text')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not extract app id from shared text'),
+          ),
+        );
       }
     } else {
       // show preview dialog
@@ -98,15 +116,18 @@ class _StoreShareHandlerState extends State<StoreShareHandler> {
     if (host.contains('play.google.com') || url.contains('market://')) {
       final q = uri.queryParameters;
       final id = q['id'];
-      if (id != null && id.isNotEmpty) return {'store': 'play', 'package': id, 'appId': null};
+      if (id != null && id.isNotEmpty)
+        return {'store': 'play', 'package': id, 'appId': null};
       final m = RegExp(r'id=([A-Za-z0-9\._]+)').firstMatch(url);
-      if (m != null) return {'store': 'play', 'package': m.group(1), 'appId': null};
+      if (m != null)
+        return {'store': 'play', 'package': m.group(1), 'appId': null};
     }
 
     // Apple App Store
     if (host.contains('apps.apple.com')) {
       final m = RegExp(r'id(\d+)').firstMatch(url);
-      if (m != null) return {'store': 'appstore', 'package': null, 'appId': m.group(1)};
+      if (m != null)
+        return {'store': 'appstore', 'package': null, 'appId': m.group(1)};
     }
 
     return {'store': null, 'package': null, 'appId': null};
@@ -123,11 +144,14 @@ class _StoreShareHandlerState extends State<StoreShareHandler> {
 
   Future<String?> _fetchPlayStoreTitle(String packageId) async {
     try {
-      final url = 'https://play.google.com/store/apps/details?id=$packageId&hl=en&gl=US';
+      final url =
+          'https://play.google.com/store/apps/details?id=$packageId&hl=en&gl=US';
       final resp = await http.get(Uri.parse(url));
       if (resp.statusCode == 200) {
         final body = resp.body;
-        final m = RegExp(r'<meta property="og:title" content="([^"]+)"').firstMatch(body);
+        final m = RegExp(
+          r'<meta property="og:title" content="([^"]+)"',
+        ).firstMatch(body);
         if (m != null) return m.group(1);
         final m2 = RegExp(r'<h1[^>]*>([^<]+)<').firstMatch(body);
         if (m2 != null) return m2.group(1)?.trim();
@@ -158,8 +182,14 @@ class _StoreShareHandlerState extends State<StoreShareHandler> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-            ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Add')),
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Add'),
+            ),
           ],
         );
       },
@@ -171,9 +201,15 @@ class _StoreShareHandlerState extends State<StoreShareHandler> {
       final gm = GameModel(id: '', name: title, packageId: pkg);
       try {
         await gs.addGame(gm);
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Game added')));
+        if (mounted)
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Game added')));
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to add game: $e')));
+        if (mounted)
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Failed to add game: $e')));
       }
     }
   }
@@ -189,8 +225,8 @@ class _StoreShareHandlerState extends State<StoreShareHandler> {
           children: [
             const Text('Instructions:'),
             const SizedBox(height: 8),
-            const Text('- Open Play Store / App Store') ,
-            const Text('- Tap Share → choose GamesBox Parent') ,
+            const Text('- Open Play Store / App Store'),
+            const Text('- Tap Share → choose GamesBox Parent'),
             const SizedBox(height: 12),
             const Divider(),
             const SizedBox(height: 12),
@@ -206,8 +242,22 @@ class _StoreShareHandlerState extends State<StoreShareHandler> {
                   context: context,
                   builder: (context) => AlertDialog(
                     title: const Text('Paste store URL'),
-                    content: TextField(controller: controller, decoration: const InputDecoration(hintText: 'https://play.google.com/...')),
-                    actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')), ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Process'))],
+                    content: TextField(
+                      controller: controller,
+                      decoration: const InputDecoration(
+                        hintText: 'https://play.google.com/...',
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Process'),
+                      ),
+                    ],
                   ),
                 );
                 if (ok == true && controller.text.isNotEmpty) {

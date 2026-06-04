@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/game_model.dart';
+import 'package:gamesbox_common/gamesbox_common.dart';
 import 'package:firebase_database/firebase_database.dart';
 
 class GamePlayScreen extends StatefulWidget {

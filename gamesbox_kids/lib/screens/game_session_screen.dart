@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:installed_apps/installed_apps.dart';
-import '../models/game_entry.dart';
+import 'package:gamesbox_common/gamesbox_common.dart';
 
 class GameSessionScreen extends StatefulWidget {
   final GameEntry game;
@@ -156,7 +156,7 @@ class _GameSessionScreenState extends State<GameSessionScreen> {
                     height: 120,
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(32),
                     ),
                     child: widget.game.iconBytes != null
@@ -181,7 +181,7 @@ class _GameSessionScreenState extends State<GameSessionScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Text(
@@ -205,7 +205,7 @@ class _GameSessionScreenState extends State<GameSessionScreen> {
                       borderRadius: BorderRadius.circular(32),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         ),

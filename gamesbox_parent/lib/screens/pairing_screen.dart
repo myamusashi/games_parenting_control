@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../services/storage_service_updated.dart';
+import 'package:gamesbox_common/gamesbox_common.dart';
 import 'home_screen.dart';
 
 class PairingGuideScreen extends StatefulWidget {
@@ -85,8 +85,8 @@ class _PairingGuideScreenState extends State<PairingGuideScreen>
             padding: const EdgeInsets.all(20),
             margin: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
-              border: Border.all(color: Colors.blue.withOpacity(0.3)),
+              color: Colors.blue.withValues(alpha: 0.1),
+              border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -104,7 +104,7 @@ class _PairingGuideScreenState extends State<PairingGuideScreen>
                       child: Text(
                         'Bagikan kode atau QR code berikut ke device anak untuk pairing.',
                         style: TextStyle(
-                          color: Colors.blue.withOpacity(0.8),
+                          color: Colors.blue.withValues(alpha: 0.8),
                           fontSize: 13,
                         ),
                       ),
@@ -196,7 +196,7 @@ class _PairingGuideScreenState extends State<PairingGuideScreen>
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 12,
-              color: Colors.white.withOpacity(0.6),
+              color: Colors.white.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 32),
@@ -207,7 +207,7 @@ class _PairingGuideScreenState extends State<PairingGuideScreen>
               color: const Color(0xFF1E1E2E),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: const Color(0xFF6C63FF).withOpacity(0.3),
+                color: const Color(0xFF6C63FF).withValues(alpha: 0.3),
                 width: 2,
               ),
             ),
@@ -250,9 +250,9 @@ class _PairingGuideScreenState extends State<PairingGuideScreen>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.amber.withOpacity(0.1),
+              color: Colors.amber.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.amber.withOpacity(0.3)),
+              border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -281,7 +281,7 @@ class _PairingGuideScreenState extends State<PairingGuideScreen>
                   '3. Masukkan kode 16 digit ini\n'
                   '4. Konfirmasi pairing',
                   style: TextStyle(
-                    color: Colors.amber.withOpacity(0.7),
+                    color: Colors.amber.withValues(alpha: 0.7),
                     fontSize: 12,
                     height: 1.8,
                   ),
@@ -320,7 +320,7 @@ class _PairingGuideScreenState extends State<PairingGuideScreen>
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 12,
-              color: Colors.white.withOpacity(0.6),
+              color: Colors.white.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 32),
@@ -333,7 +333,7 @@ class _PairingGuideScreenState extends State<PairingGuideScreen>
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: const Color(0xFF6C63FF).withOpacity(0.3),
+                color: const Color(0xFF6C63FF).withValues(alpha: 0.3),
                 width: 2,
               ),
             ),
@@ -369,9 +369,9 @@ class _PairingGuideScreenState extends State<PairingGuideScreen>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.purple.withOpacity(0.1),
+              color: Colors.purple.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.purple.withOpacity(0.3)),
+              border: Border.all(color: Colors.purple.withValues(alpha: 0.3)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -397,7 +397,7 @@ class _PairingGuideScreenState extends State<PairingGuideScreen>
                 Text(
                   'Implementasi QR Code memerlukan library qr_flutter dan mobile_scanner. Untuk demo, gunakan kode 16 digit di tab sebelumnya.',
                   style: TextStyle(
-                    color: Colors.purple.withOpacity(0.7),
+                    color: Colors.purple.withValues(alpha: 0.7),
                     fontSize: 12,
                     height: 1.8,
                   ),

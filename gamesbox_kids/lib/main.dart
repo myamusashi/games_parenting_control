@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'services/firebase_service.dart';
+import 'package:gamesbox_common/gamesbox_common.dart';
 import 'screens/pairing_screen.dart';
 import 'screens/games_list_screen.dart';
 

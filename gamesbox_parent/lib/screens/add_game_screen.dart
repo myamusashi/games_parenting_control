@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/game_model.dart';
+import 'package:gamesbox_common/gamesbox_common.dart';
 import '../services/games_service.dart';
 
 class AddGameScreen extends StatefulWidget {

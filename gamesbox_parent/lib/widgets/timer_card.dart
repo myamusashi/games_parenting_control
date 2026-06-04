@@ -19,7 +19,7 @@ class TimerCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
+        color: Colors.white.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
@@ -50,7 +50,7 @@ class TimerCard extends StatelessWidget {
                       'Sisa waktu bermain hari ini (batas: ${dailyLimit >= 60 ? "${dailyLimit ~/ 60} jam" : "$dailyLimit menit"})',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.white.withOpacity(0.7),
+                        color: Colors.white.withValues(alpha: 0.7),
                       ),
                     ),
                   ],
@@ -65,7 +65,7 @@ class TimerCard extends StatelessWidget {
             child: LinearProgressIndicator(
               value: usageRatio,
               minHeight: 8,
-              backgroundColor: Colors.white.withOpacity(0.2),
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
               valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFFD54F)),
             ),
           ),

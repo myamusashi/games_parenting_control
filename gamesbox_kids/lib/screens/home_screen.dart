@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:installed_apps/installed_apps.dart';
 import 'package:usage_stats/usage_stats.dart';
 import 'dart:async';
-import '../models/game_entry.dart';
+import 'package:gamesbox_common/gamesbox_common.dart';
 import '../widgets/timer_card.dart';
 import '../widgets/game_card.dart';
 import '../widgets/password_dialog.dart';
-import '../services/storage_service.dart';
 import 'game_session_screen.dart';
 import 'parent_dashboard.dart';
 
@@ -273,7 +272,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(

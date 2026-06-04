@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:installed_apps/installed_apps.dart';
 import 'package:usage_stats/usage_stats.dart';
-import '../models/game_entry.dart';
+import 'package:gamesbox_common/gamesbox_common.dart';
 import '../widgets/section_card.dart';
-import '../services/storage_service.dart';
 import 'app_selection_screen.dart';
 
 class ParentDashboard extends StatefulWidget {
@@ -217,7 +216,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
                       leading: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
+                          color: Colors.white.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: g.iconBytes != null
