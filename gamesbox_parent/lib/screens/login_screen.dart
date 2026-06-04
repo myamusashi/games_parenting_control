@@ -16,22 +16,40 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     setState(() => _loading = true);
     try {
-      await AuthService.signIn(_emailController.text.trim(), _passwordController.text.trim());
+      await AuthService.signIn(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
       if (mounted) Navigator.pushReplacementNamed(context, '/dashboard');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Login failed: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _register() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    // FIX: Early return if strings are blank to stop channel-errors
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all fields.')),
+      );
+      return;
+    }
+
     setState(() => _loading = true);
     try {
-      await AuthService.register(_emailController.text.trim(), _passwordController.text.trim());
+      await AuthService.register(email, password);
       if (mounted) Navigator.pushReplacementNamed(context, '/dashboard');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Register failed: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Register failed: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -45,12 +63,27 @@ class _LoginScreenState extends State<LoginScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            TextField(controller: _emailController, decoration: const InputDecoration(labelText: 'Email')),
+            TextField(
+              controller: _emailController,
+              decoration: const InputDecoration(labelText: 'Email'),
+            ),
             const SizedBox(height: 8),
-            TextField(controller: _passwordController, decoration: const InputDecoration(labelText: 'Password'), obscureText: true),
+            TextField(
+              controller: _passwordController,
+              decoration: const InputDecoration(labelText: 'Password'),
+              obscureText: true,
+            ),
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: _loading ? null : _login, child: _loading ? const CircularProgressIndicator() : const Text('Login')),
-            TextButton(onPressed: _loading ? null : _register, child: const Text('Register')),
+            ElevatedButton(
+              onPressed: _loading ? null : _login,
+              child: _loading
+                  ? const CircularProgressIndicator()
+                  : const Text('Login'),
+            ),
+            TextButton(
+              onPressed: _loading ? null : _register,
+              child: const Text('Register'),
+            ),
           ],
         ),
       ),

@@ -22,12 +22,14 @@ dependencies:
   otp: ^3.2.0
   receive_sharing_intent: ^1.4.5
   http: ^0.13.6
+  pretty_qr_code: ^3.6.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
   flutter_lints: ^6.0.0
+  generate_signin_key: ^1.1.1
 
 flutter:
   uses-material-design: true
