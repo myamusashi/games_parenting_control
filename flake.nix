@@ -82,9 +82,9 @@
                         if [ -f android/gradle.properties ]; then
                           sed -i './gamesbox_kids/android.aapt2FromMavenOverride/d' ./gamesbox_kids/android/gradle.properties
                           sed -i './gamesbox_parent/android.aapt2FromMavenOverride/d' ./gamesbox_parent/android/gradle.properties
+                          echo "android.aapt2FromMavenOverride=${androidSdk}/libexec/android-sdk/build-tools/35.0.0/aapt2" >> ./gamesbox_kids/android/gradle.properties
+                          echo "android.aapt2FromMavenOverride=${androidSdk}/libexec/android-sdk/build-tools/35.0.0/aapt2" >> ./gamesbox_parent/android/gradle.properties
                         fi
-                        echo "android.aapt2FromMavenOverride=${androidSdk}/libexec/android-sdk/build-tools/35.0.0/aapt2" >> ./gamesbox_kids/android/gradle.properties
-                        echo "android.aapt2FromMavenOverride=${androidSdk}/libexec/android-sdk/build-tools/35.0.0/aapt2" >> ./gamesbox_parent/android/gradle.properties
 
                         {
                           echo "sdk.dir=$ANDROID_SDK_ROOT"
