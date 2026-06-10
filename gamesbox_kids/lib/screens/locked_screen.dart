@@ -2,9 +2,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:gamesbox_common/gamesbox_common.dart';
+// Phase 4: unlock notification helper lives in gamesbox_parent's notification_service.
+// Because this is the kids app, we inline the RTDB write directly here instead
+// of importing from the parent app — keeping the dependency graph clean.
+import 'package:firebase_database/firebase_database.dart';
 
-/// UX-K-01: Full-screen locked state — cannot be dismissed.
-/// Shows countdown to midnight and a button to scan parent's unlock QR.
+/// UX-K-01: Full-screen locked state — cannot be dismissed without QR unlock.
+///
+/// Phase 4 addition: after a successful QR scan, writes a confirmation
+/// notification to the parent's RTDB inbox at notifications/<parentId>/<key>.
 class LockedScreen extends StatefulWidget {
   const LockedScreen({super.key});
 
@@ -17,6 +23,7 @@ class _LockedScreenState extends State<LockedScreen> {
   Duration _timeUntilReset = Duration.zero;
   bool _showScanner = false;
   String? _kidId;
+  String? _kidName;
   String? _otpSecret;
 
   @override
@@ -34,21 +41,22 @@ class _LockedScreenState extends State<LockedScreen> {
 
   Future<void> _loadData() async {
     _kidId = await StorageService.getKidId();
+    _kidName = await StorageService.getKidName();
     _otpSecret = await StorageService.getOtpSecret();
   }
 
   void _startCountdown() {
     _updateCountdown();
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      _updateCountdown();
-    });
+    _countdownTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => _updateCountdown(),
+    );
   }
 
   void _updateCountdown() {
     final now = DateTime.now();
-    final midnight = DateTime(now.year, now.month, now.day + 1, 0, 0, 0);
-    final diff = midnight.difference(now);
-    if (mounted) setState(() => _timeUntilReset = diff);
+    final midnight = DateTime(now.year, now.month, now.day + 1);
+    if (mounted) setState(() => _timeUntilReset = midnight.difference(now));
   }
 
   String get _countdownText {
@@ -58,8 +66,11 @@ class _LockedScreenState extends State<LockedScreen> {
     return '$h:$m:$s';
   }
 
+  // ── QR scan handler ─────────────────────────────────────────────────────
+
   Future<void> _handleQrScan(String? rawValue) async {
     if (rawValue == null) return;
+
     if (_kidId == null || _otpSecret == null) {
       _showError(
         'Perangkat belum terkonfigurasi. Hubungkan ulang dengan orang tua.',
@@ -74,15 +85,43 @@ class _LockedScreenState extends State<LockedScreen> {
         expectedKidId: _kidId!,
       );
 
-      // Add extra time to local storage
+      // Apply extra time to local limit
       final currentLimit = await StorageService.getDailyLimit();
       await StorageService.saveDailyLimit(currentLimit + extraMinutes);
 
-      if (mounted) {
-        Navigator.pop(context, extraMinutes); // return extra minutes granted
-      }
+      // Phase 4: notify parent via RTDB
+      await _notifyParentUnlock(extraMinutes);
+
+      if (mounted) Navigator.pop(context, extraMinutes);
     } catch (e) {
-      _showError(e.toString());
+      _showError(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  /// Writes a confirmation notification to the parent's RTDB inbox.
+  /// Kept inline here so the kids app has no dependency on the parent app's
+  /// notification_service.dart.
+  Future<void> _notifyParentUnlock(int extraMinutes) async {
+    try {
+      final snap = await FirebaseDatabase.instance
+          .ref('kids/$_kidId/parentId')
+          .get();
+      final parentUid = snap.value as String?;
+      if (parentUid == null || parentUid.isEmpty) return;
+
+      final name = _kidName ?? 'Anak';
+      await FirebaseDatabase.instance
+          .ref('notifications/$parentUid')
+          .push()
+          .set({
+            'title': '✅ $name mendapat waktu tambahan',
+            'body': '$name menggunakan QR unlock untuk +$extraMinutes menit.',
+            'type': 'unlocked',
+            'timestamp': DateTime.now().toIso8601String(),
+            'read': false,
+          });
+    } catch (_) {
+      // Non-critical — unlock already applied locally
     }
   }
 
@@ -99,11 +138,12 @@ class _LockedScreenState extends State<LockedScreen> {
     );
   }
 
+  // ── Build ───────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      // UX-K-01: Cannot be dismissed without QR unlock
-      canPop: false,
+      canPop: false, // UX-K-01: cannot be dismissed without QR unlock
       child: Scaffold(
         backgroundColor: const Color(0xFF0F0E17),
         body: SafeArea(
@@ -121,13 +161,12 @@ class _LockedScreenState extends State<LockedScreen> {
         children: [
           const Spacer(flex: 2),
 
-          // Animated icon
+          // Animated lock icon
           TweenAnimationBuilder<double>(
             tween: Tween(begin: 0.8, end: 1.0),
             duration: const Duration(seconds: 2),
             curve: Curves.easeInOut,
-            builder: (_, value, child) =>
-                Transform.scale(scale: value, child: child),
+            builder: (_, v, child) => Transform.scale(scale: v, child: child),
             child: Container(
               width: 120,
               height: 120,
@@ -176,7 +215,7 @@ class _LockedScreenState extends State<LockedScreen> {
 
           const Spacer(flex: 1),
 
-          // Countdown to reset
+          // Countdown to midnight
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             decoration: BoxDecoration(
@@ -273,7 +312,7 @@ class _LockedScreenState extends State<LockedScreen> {
           ),
         ),
 
-        // Info
+        // Info banner
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 16),
           padding: const EdgeInsets.all(12),
@@ -288,7 +327,8 @@ class _LockedScreenState extends State<LockedScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Minta orang tua untuk membuka GamesBox Parent → Beri Waktu Tambahan, lalu arahkan kamera ke QR code.',
+                  'Minta orang tua membuka GamesBox Parent → Beri Waktu Tambahan, '
+                  'lalu arahkan kamera ke QR code.',
                   style: TextStyle(
                     color: Colors.blue.withValues(alpha: 0.8),
                     fontSize: 12,
