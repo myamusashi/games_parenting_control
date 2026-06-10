@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:installed_apps/installed_apps.dart';
 import 'package:usage_stats/usage_stats.dart';
 import 'package:gamesbox_common/gamesbox_common.dart';
-import '../widgets/section_card.dart';
 import 'app_selection_screen.dart';
 
 class ParentDashboard extends StatefulWidget {
