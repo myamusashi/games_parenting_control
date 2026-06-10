@@ -25,6 +25,7 @@ dependencies:
 
   gamesbox_common:
     path: ../gamesbox_common
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:

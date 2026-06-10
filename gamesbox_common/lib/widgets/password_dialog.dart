@@ -1,0 +1,230 @@
+import 'package:flutter/material.dart';
+import '../services/storage_service.dart';
+
+class PasswordDialog extends StatefulWidget {
+  final VoidCallback onSuccess;
+
+  const PasswordDialog({super.key, required this.onSuccess});
+
+  @override
+  State<PasswordDialog> createState() => _PasswordDialogState();
+}
+
+class _PasswordDialogState extends State<PasswordDialog> {
+  String _input = '';
+  bool _isError = false;
+
+  void _onKeyPress(String val) {
+    if (_input.length < 4) {
+      setState(() {
+        _input += val;
+        _isError = false;
+      });
+      if (_input.length == 4) _check();
+    }
+  }
+
+  void _onBackspace() {
+    if (_input.isNotEmpty) {
+      setState(() {
+        _input = _input.substring(0, _input.length - 1);
+        _isError = false;
+      });
+    }
+  }
+
+  Future<void> _check() async {
+    final correctPin = await StorageService.getParentPin();
+    if (_input == correctPin) {
+      widget.onSuccess();
+    } else {
+      setState(() => _isError = true);
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) setState(() => _input = '');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog.fullscreen(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF3F4E96), Color(0xFF7E60AF), Color(0xFF9F59B1)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: Column(
+              children: [
+                Align(
+                  alignment: Alignment.topLeft,
+                  child: IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white70),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+                const Spacer(flex: 1),
+                Container(
+                  width: 90,
+                  height: 90,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: const Icon(
+                    Icons.sports_esports_outlined,
+                    color: Colors.white,
+                    size: 44,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                const Text(
+                  'GameBox Parent',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                  child: Text(
+                    'Masukkan PIN untuk masuk sebagai Orang Tua',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 16,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 48),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(4, (index) {
+                    final isFilled = index < _input.length;
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 10),
+                      width: 18,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _isError
+                            ? Colors.redAccent.withValues(alpha: 0.8)
+                            : (isFilled ? Colors.white : Colors.transparent),
+                        border: Border.all(
+                          color: _isError
+                              ? Colors.redAccent
+                              : Colors.white.withValues(alpha: 0.5),
+                          width: 2.5,
+                        ),
+                        boxShadow: isFilled && !_isError
+                            ? [
+                                BoxShadow(
+                                  color: Colors.white.withValues(alpha: 0.4),
+                                  blurRadius: 12,
+                                  spreadRadius: 2,
+                                ),
+                              ]
+                            : [],
+                      ),
+                    );
+                  }),
+                ),
+                const Spacer(flex: 2),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 30),
+                  child: Column(
+                    children: [
+                      _buildRow(['1', '2', '3']),
+                      const SizedBox(height: 16),
+                      _buildRow(['4', '5', '6']),
+                      const SizedBox(height: 16),
+                      _buildRow(['7', '8', '9']),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          const SizedBox(width: 90),
+                          _buildKey('0'),
+                          _buildBackspaceKey(),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(flex: 1),
+                Text(
+                  'Lupa PIN? Hubungi admin perangkat',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 32),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRow(List<String> keys) => Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: keys.map(_buildKey).toList(),
+      );
+
+  Widget _buildKey(String label) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _onKeyPress(label),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          width: 90,
+          height: 65,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(20),
+            border:
+                Border.all(color: Colors.white.withValues(alpha: 0.05), width: 1),
+          ),
+          alignment: Alignment.center,
+          child: Text(label,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w500)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBackspaceKey() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _onBackspace,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          width: 90,
+          height: 65,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          alignment: Alignment.center,
+          child:
+              const Icon(Icons.backspace_outlined, color: Colors.white, size: 24),
+        ),
+      ),
+    );
+  }
+}

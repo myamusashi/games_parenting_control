@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:gamesbox_common/gamesbox_common.dart';
+import 'screens/splash_screen.dart';
 import 'screens/pairing_screen.dart';
+import 'screens/home_screen.dart';
 import 'screens/games_list_screen.dart';
 
 void main() async {
@@ -16,10 +18,16 @@ class KidsApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'GamesBox Kids',
-      theme: ThemeData(primarySwatch: Colors.green),
-      home: const PairingScreen(),
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.green,
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF43A047)),
+      ),
+      // BUG-03 FIX: home is now KidsSplashScreen which checks pairing status
+      home: const KidsSplashScreen(),
       routes: {
         '/pairing': (context) => const PairingScreen(),
+        '/home': (context) => const HomeScreen(),
         '/games': (context) => const GamesListScreen(),
       },
     );

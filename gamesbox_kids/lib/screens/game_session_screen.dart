@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:installed_apps/installed_apps.dart';
 import 'package:gamesbox_common/gamesbox_common.dart';
+import '../services/kid_sync_service.dart';
 
 class GameSessionScreen extends StatefulWidget {
   final GameEntry game;
@@ -19,7 +20,7 @@ class GameSessionScreen extends StatefulWidget {
 }
 
 class _GameSessionScreenState extends State<GameSessionScreen> {
-  int _elapsed = 0; // seconds
+  int _elapsed = 0;
   Timer? _timer;
 
   @override
@@ -27,6 +28,13 @@ class _GameSessionScreenState extends State<GameSessionScreen> {
     super.initState();
     _startTimer();
     _launchActualApp();
+    // BUG-04: Start sync (may already be running, safe to call again)
+    _startSync();
+  }
+
+  Future<void> _startSync() async {
+    final kidId = await StorageService.getKidId();
+    if (kidId != null) KidSyncService.startPeriodicSync(kidId);
   }
 
   void _launchActualApp() {
@@ -41,12 +49,10 @@ class _GameSessionScreenState extends State<GameSessionScreen> {
       }
       setState(() => _elapsed++);
 
-      // Warning at 5 minutes remaining
       if (widget.remainingSeconds - _elapsed == 300) {
         _showWarning();
       }
 
-      // Auto-stop when time is up
       if (_elapsed >= widget.remainingSeconds) {
         timer.cancel();
         _showTimeUpDialog();
@@ -92,17 +98,26 @@ class _GameSessionScreenState extends State<GameSessionScreen> {
           FilledButton(
             onPressed: () {
               Navigator.pop(context);
-              Navigator.pop(context, _elapsed);
+              _exitSession();
             },
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFFFF5252),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text('Keluar Game'),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _exitSession() async {
+    _timer?.cancel();
+    // BUG-04: Force sync before navigating away
+    await KidSyncService.syncNow();
+    if (mounted) Navigator.pop(context, _elapsed);
   }
 
   String get _formattedElapsed {
@@ -119,7 +134,10 @@ class _GameSessionScreenState extends State<GameSessionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final remainSec = (widget.remainingSeconds - _elapsed).clamp(0, widget.remainingSeconds);
+    final remainSec = (widget.remainingSeconds - _elapsed).clamp(
+      0,
+      widget.remainingSeconds,
+    );
     final remainM = remainSec ~/ 60;
     final remainS = remainSec % 60;
 
@@ -128,10 +146,7 @@ class _GameSessionScreenState extends State<GameSessionScreen> {
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final confirm = await _showConfirmExit();
-        if (confirm == true && mounted) {
-          _timer?.cancel();
-          Navigator.pop(context, _elapsed);
-        }
+        if (confirm == true && mounted) await _exitSession();
       },
       child: Scaffold(
         body: Container(
@@ -149,8 +164,6 @@ class _GameSessionScreenState extends State<GameSessionScreen> {
               child: Column(
                 children: [
                   const Spacer(flex: 1),
-
-                  // Game icon & Name
                   Container(
                     width: 120,
                     height: 120,
@@ -179,7 +192,10 @@ class _GameSessionScreenState extends State<GameSessionScreen> {
                   ),
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
@@ -193,12 +209,13 @@ class _GameSessionScreenState extends State<GameSessionScreen> {
                       ),
                     ),
                   ),
-
                   const Spacer(flex: 1),
-
-                  // Timer Display
+                  // Timer display
                   Container(
-                    padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 32,
+                      horizontal: 20,
+                    ),
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -233,9 +250,11 @@ class _GameSessionScreenState extends State<GameSessionScreen> {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        // Remaining indicator
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
                           decoration: BoxDecoration(
                             color: remainM < 5
                                 ? const Color(0xFFFFEBEE)
@@ -269,25 +288,22 @@ class _GameSessionScreenState extends State<GameSessionScreen> {
                       ],
                     ),
                   ),
-
                   const Spacer(flex: 2),
-
-                  // Stop button
                   SizedBox(
                     width: double.infinity,
                     height: 60,
                     child: FilledButton.icon(
                       onPressed: () async {
                         final confirm = await _showConfirmExit();
-                        if (confirm == true && mounted) {
-                          _timer?.cancel();
-                          Navigator.pop(context, _elapsed);
-                        }
+                        if (confirm == true && mounted) await _exitSession();
                       },
                       icon: const Icon(Icons.stop_rounded, size: 28),
                       label: const Text(
                         'Selesai Main',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFFFF5252),
@@ -332,7 +348,9 @@ class _GameSessionScreenState extends State<GameSessionScreen> {
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFFFF5252),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text('Keluar'),
           ),

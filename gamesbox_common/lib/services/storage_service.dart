@@ -1,23 +1,31 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
 import '../models/game_entry.dart';
 
 class StorageService {
-  // Local storage keys
-  static const String _keyParentPin = 'parent_pin';
+  // ─── Secure storage instance ──────────────────────────────────────────────
+  static const _secure = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
+
+  // ─── Local storage keys (non-sensitive) ───────────────────────────────────
   static const String _keyIsRegistered = 'is_registered';
   static const String _keyDailyLimit = 'daily_limit';
   static const String _keyTotalPlayedSeconds = 'total_played_seconds';
   static const String _keyLastResetDate = 'last_reset_date';
   static const String _keyGamePrefix = 'game_sec_';
   static const String _keyGamesList = 'allowed_games_list';
-  
-  // Firebase sync keys
   static const String _keyFamilyId = 'family_id';
-  static const String _keyOtpSecret = 'otp_secret';
+  static const String _keyKidId = 'kid_id';
+  static const String _keyKidName = 'kid_name';
   static const String _keyUseFirebase = 'use_firebase';
 
-  // ──── FAMILY ID MANAGEMENT ────
+  // ─── Secure storage keys (sensitive) ─────────────────────────────────────
+  static const String _secKeyParentPin = 'parent_pin';
+  static const String _secKeyOtpSecret = 'otp_secret';
+
+  // ─── FAMILY ID MANAGEMENT ────────────────────────────────────────────────
   static Future<void> saveFamilyId(String familyId) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyFamilyId, familyId);
@@ -33,18 +41,44 @@ class StorageService {
     return familyId != null && familyId.isNotEmpty;
   }
 
-  // ──── OTP SECRET MANAGEMENT ────
-  static Future<void> saveOtpSecret(String secret) async {
+  // ─── KID ID MANAGEMENT ───────────────────────────────────────────────────
+  static Future<void> saveKidId(String kidId) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyOtpSecret, secret);
+    await prefs.setString(_keyKidId, kidId);
+  }
+
+  static Future<String?> getKidId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyKidId);
+  }
+
+  // ─── KID NAME MANAGEMENT (UX-K-02) ───────────────────────────────────────
+  static Future<void> saveKidName(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyKidName, name);
+  }
+
+  static Future<String> getKidName() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyKidName) ?? 'Anak';
+  }
+
+  // ─── OTP SECRET — now in secure storage (SEC-01) ─────────────────────────
+  static Future<void> saveOtpSecret(String secret) async {
+    await _secure.write(key: _secKeyOtpSecret, value: secret);
   }
 
   static Future<String?> getOtpSecret() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyOtpSecret);
+    try {
+      return await _secure.read(key: _secKeyOtpSecret);
+    } catch (_) {
+      // Fallback to SharedPreferences for backward compatibility
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('otp_secret');
+    }
   }
 
-  // ──── FIREBASE SYNC FLAG ────
+  // ─── FIREBASE SYNC FLAG ───────────────────────────────────────────────────
   static Future<void> setUseFirebase(bool use) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyUseFirebase, use);
@@ -55,25 +89,39 @@ class StorageService {
     return prefs.getBool(_keyUseFirebase) ?? false;
   }
 
-  // ──── PIN MANAGEMENT (backward compatibility) ────
+  // ─── PIN MANAGEMENT — now in secure storage (SEC-02) ─────────────────────
   static Future<void> saveParentPin(String pin) async {
+    await _secure.write(key: _secKeyParentPin, value: pin);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyParentPin, pin);
     await prefs.setBool(_keyIsRegistered, true);
   }
 
   static Future<String> getParentPin() async {
+    try {
+      final pin = await _secure.read(key: _secKeyParentPin);
+      if (pin != null) return pin;
+    } catch (_) {
+      // ignore
+    }
+    // Fallback: migrate from plain SharedPreferences
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyParentPin) ?? '1234';
+    final legacyPin = prefs.getString('parent_pin');
+    if (legacyPin != null) {
+      // Migrate to secure storage
+      await _secure.write(key: _secKeyParentPin, value: legacyPin);
+      await prefs.remove('parent_pin');
+      return legacyPin;
+    }
+    return '1234';
   }
 
-  // ──── REGISTRATION STATUS ────
+  // ─── REGISTRATION STATUS ─────────────────────────────────────────────────
   static Future<bool> isRegistered() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_keyIsRegistered) ?? false;
   }
 
-  // ──── DAILY LIMIT ────
+  // ─── DAILY LIMIT ─────────────────────────────────────────────────────────
   static Future<void> saveDailyLimit(int limitMinutes) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_keyDailyLimit, limitMinutes);
@@ -84,7 +132,7 @@ class StorageService {
     return prefs.getInt(_keyDailyLimit) ?? 60;
   }
 
-  // ──── TOTAL PLAYED TIME ────
+  // ─── TOTAL PLAYED TIME ───────────────────────────────────────────────────
   static Future<void> saveTotalPlayed(int seconds) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_keyTotalPlayedSeconds, seconds);
@@ -96,7 +144,7 @@ class StorageService {
     return prefs.getInt(_keyTotalPlayedSeconds) ?? 0;
   }
 
-  // ──── GAME PLAYED TIME ────
+  // ─── GAME PLAYED TIME ────────────────────────────────────────────────────
   static Future<void> saveGamePlayed(String gameName, int seconds) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_keyGamePrefix + gameName, seconds);
@@ -108,7 +156,7 @@ class StorageService {
     return prefs.getInt(_keyGamePrefix + gameName) ?? 0;
   }
 
-  // ──── GAMES LIST ────
+  // ─── GAMES LIST ──────────────────────────────────────────────────────────
   static Future<void> saveGames(List<GameEntry> games) async {
     final prefs = await SharedPreferences.getInstance();
     final String encoded = jsonEncode(games.map((e) => e.toJson()).toList());
@@ -123,11 +171,10 @@ class StorageService {
     return decoded.map((e) => GameEntry.fromJson(e)).toList();
   }
 
-  // ──── RESET DAILY ────
+  // ─── RESET DAILY ─────────────────────────────────────────────────────────
   static Future<void> resetDailyData() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_keyTotalPlayedSeconds, 0);
-    // Reset all games
     final keys = prefs.getKeys();
     for (String key in keys) {
       if (key.startsWith(_keyGamePrefix)) {
@@ -137,13 +184,12 @@ class StorageService {
     await prefs.setString(_keyLastResetDate, _getCurrentDateString());
   }
 
-  // ──── HELPER METHODS ────
+  // ─── HELPER METHODS ──────────────────────────────────────────────────────
   static Future<void> _checkAndResetDailyIfNeeded(
     SharedPreferences prefs,
   ) async {
     final lastReset = prefs.getString(_keyLastResetDate);
     final today = _getCurrentDateString();
-
     if (lastReset != today) {
       await resetDailyData();
     }
@@ -151,12 +197,13 @@ class StorageService {
 
   static String _getCurrentDateString() {
     final now = DateTime.now();
-    return "${now.year}-${now.month}-${now.day}";
+    return '${now.year}-${now.month}-${now.day}';
   }
 
-  /// Clear all data (for logout/reset)
+  /// Clear all data (for logout/reset). Secure storage is cleared separately.
   static Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
+    await _secure.deleteAll();
   }
 }

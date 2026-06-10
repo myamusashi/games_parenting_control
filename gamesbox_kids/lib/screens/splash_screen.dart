@@ -1,17 +1,20 @@
+import 'package:flutter/material.dart';
 import 'package:gamesbox_common/gamesbox_common.dart';
 
-import 'register_screen.dart';
-import 'package:flutter/material.dart';
-import 'home_screen.dart';
-
-class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+/// KidsSplashScreen — shown on every app launch.
+///
+/// BUG-03 FIX: Instead of always going to PairingScreen, it:
+///  1. Signs in anonymously so Firebase rules apply (kids app requirement).
+///  2. Triggers the daily-reset check.
+///  3. Routes to HomeScreen if already paired, or PairingScreen if not.
+class KidsSplashScreen extends StatefulWidget {
+  const KidsSplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  State<KidsSplashScreen> createState() => _KidsSplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
+class _KidsSplashScreenState extends State<KidsSplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _fadeAnim;
@@ -30,22 +33,26 @@ class _SplashScreenState extends State<SplashScreen>
       end: 1.0,
     ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut));
     _ctrl.forward();
-    // Ganti kode lama Anda yang langsung mengarah ke HomeScreen dengan ini:
-    Future.delayed(const Duration(seconds: 2), () async {
-      if (mounted) {
-        bool registered = await StorageService.isRegistered();
 
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) =>
-                  registered ? const HomeScreen() : const RegisterScreen(),
-            ),
-          );
-        }
-      }
-    });
+    Future.delayed(const Duration(seconds: 2), _checkAndNavigate);
+  }
+
+  Future<void> _checkAndNavigate() async {
+    if (!mounted) return;
+
+    // Sign in anonymously so Firebase security rules apply (kids app)
+    await FirebaseService.signInAnonymously();
+
+    // Trigger the daily-reset check (BUG-03 note from PLANNING.md)
+    await StorageService.getTotalPlayed();
+
+    final kidId = await StorageService.getKidId();
+    if (!mounted) return;
+
+    Navigator.pushReplacementNamed(
+      context,
+      kidId != null && kidId.isNotEmpty ? '/home' : '/pairing',
+    );
   }
 
   @override
@@ -71,14 +78,14 @@ class _SplashScreenState extends State<SplashScreen>
                   height: 100,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF6C63FF), Color(0xFFFF6584)],
+                      colors: [Color(0xFF43A047), Color(0xFF66BB6A)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF6C63FF).withValues(alpha: 0.5),
+                        color: const Color(0xFF43A047).withValues(alpha: 0.5),
                         blurRadius: 32,
                         spreadRadius: 4,
                       ),
@@ -101,12 +108,23 @@ class _SplashScreenState extends State<SplashScreen>
                   ),
                 ),
                 const Text(
-                  'Parent',
+                  'Kids',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w300,
-                    color: Color(0xFF6C63FF),
+                    color: Color(0xFF43A047),
                     letterSpacing: 6,
+                  ),
+                ),
+                const SizedBox(height: 48),
+                const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFF43A047),
+                    ),
                   ),
                 ),
               ],

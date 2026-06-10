@@ -11,6 +11,19 @@ class FirebaseService {
     database = FirebaseDatabase.instance;
   }
 
+  // ─── BUG-01 FIX: Add getCurrentUser() ────────────────────────────────────
+  /// Returns the currently signed-in Firebase user, or null if not signed in.
+  static User? getCurrentUser() => FirebaseAuth.instance.currentUser;
+
+  /// Sign in anonymously (used by kids app so Firebase rules can apply).
+  /// If already signed in (anonymous or otherwise), returns current user.
+  static Future<User?> signInAnonymously() async {
+    final current = FirebaseAuth.instance.currentUser;
+    if (current != null) return current;
+    final credential = await FirebaseAuth.instance.signInAnonymously();
+    return credential.user;
+  }
+
   /// Register a new parent account with email/password.
   /// Returns [UserCredential] on success, or null if auth fails silently.
   static Future<UserCredential?> registerParent({
@@ -18,6 +31,18 @@ class FirebaseService {
     required String password,
   }) async {
     final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+    return credential;
+  }
+
+  /// Sign in existing parent with email/password.
+  static Future<UserCredential?> signInParent({
+    required String email,
+    required String password,
+  }) async {
+    final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
       email: email,
       password: password,
     );
