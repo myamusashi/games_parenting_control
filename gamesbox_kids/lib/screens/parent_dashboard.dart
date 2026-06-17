@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:installed_apps/installed_apps.dart';
 import 'package:usage_stats/usage_stats.dart';
@@ -40,29 +42,37 @@ class _ParentDashboardState extends State<ParentDashboard> {
   }
 
   Future<void> _reloadGames() async {
-    final games = await StorageService.getGames();
-    final List<GameEntry> updatedGames = [];
-    
-    for (var game in games) {
-      try {
-        final app = await InstalledApps.getAppInfo(game.packageName);
-        updatedGames.add(GameEntry(
+    // Fetch fresh from Firebase (which also updates local cache)
+    final games = await GameSyncService.fetchGames();
+    final List<GameEntry> enriched = [];
+    for (final game in games) {
+      Uint8List? icon = game.iconBytes;
+      if (icon == null) {
+        try {
+          final app = await InstalledApps.getAppInfo(game.packageName);
+          icon = app?.icon;
+        } catch (_) {}
+      }
+      enriched.add(
+        GameEntry(
           name: game.name,
           packageName: game.packageName,
-          iconBytes: app?.icon,
+          iconBytes: icon,
           isLocked: game.isLocked,
-          totalPlayedSecondsToday: await StorageService.getGamePlayed(game.name),
-        ));
-      } catch (e) {
-        updatedGames.add(game);
-      }
+          totalPlayedSecondsToday: await StorageService.getGamePlayed(
+            game.name,
+          ),
+        ),
+      );
     }
-    
-    if (mounted) {
-      setState(() {
-        _currentGames = updatedGames;
-      });
-    }
+    if (mounted) setState(() => _currentGames = enriched);
+  }
+
+  Future<void> _removeGame(GameEntry game) async {
+    // Remove from Firebase + local via GameSyncService
+    await GameSyncService.removeGame(packageName: game.packageName);
+    setState(() => _currentGames.remove(game));
+    widget.onGameRemoved(game);
   }
 
   @override
@@ -129,7 +139,11 @@ class _ParentDashboardState extends State<ParentDashboard> {
                                 ),
                                 child: g.iconBytes != null
                                     ? Image.memory(g.iconBytes!)
-                                    : const Icon(Icons.gamepad, color: Colors.white70, size: 18),
+                                    : const Icon(
+                                        Icons.gamepad,
+                                        color: Colors.white70,
+                                        size: 18,
+                                      ),
                               ),
                               const SizedBox(height: 2),
                               Text(
@@ -143,7 +157,9 @@ class _ParentDashboardState extends State<ParentDashboard> {
                                 ),
                               ),
                               Text(
-                                g.name.length > 8 ? '${g.name.substring(0, 7)}...' : g.name,
+                                g.name.length > 8
+                                    ? '${g.name.substring(0, 7)}...'
+                                    : g.name,
                                 style: const TextStyle(
                                   color: Colors.white60,
                                   fontSize: 9,
@@ -160,7 +176,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
           ),
           const SizedBox(height: 20),
 
-          // ── Daily Limit Setting ──
+          // ── Daily Limit ──
           SectionCard(
             title: 'Batas Waktu Harian',
             icon: Icons.timer_rounded,
@@ -185,9 +201,9 @@ class _ParentDashboardState extends State<ParentDashboard> {
                   onChanged: (v) => setState(() => _tempLimit = v.round()),
                   onChangeEnd: (v) => widget.onLimitChanged(v.round()),
                 ),
-                Row(
+                const Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
+                  children: [
                     Text(
                       '15m',
                       style: TextStyle(color: Color(0xFF666666), fontSize: 11),
@@ -208,56 +224,87 @@ class _ParentDashboardState extends State<ParentDashboard> {
             title: 'Daftar Game Diizinkan',
             icon: Icons.sports_esports_rounded,
             child: Column(
-              children: _currentGames
-                  .map(
-                    (g) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.05),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: g.iconBytes != null
-                            ? Image.memory(g.iconBytes!, width: 32, height: 32)
-                            : const Icon(Icons.gamepad, color: Colors.white70, size: 20),
+              children: [
+                // Sync notice
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.green.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.sync_rounded,
+                        color: Colors.green,
+                        size: 12,
                       ),
-                      title: Text(
-                        g.name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
+                      const SizedBox(width: 6),
+                      Text(
+                        'Perubahan langsung tersinkron ke perangkat anak',
+                        style: TextStyle(
+                          color: Colors.green.withValues(alpha: 0.8),
+                          fontSize: 10,
                         ),
                       ),
-                      subtitle: Text(
-                        g.totalPlayedSecondsToday < 60
-                            ? '${g.totalPlayedSecondsToday} detik hari ini'
-                            : '${g.totalPlayedSecondsToday ~/ 60} menit hari ini',
-                        style: const TextStyle(
-                          color: Color(0xFF666666),
-                          fontSize: 12,
-                        ),
+                    ],
+                  ),
+                ),
+                ..._currentGames.map(
+                  (g) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      trailing: IconButton(
-                        icon: const Icon(
-                          Icons.remove_circle_outline_rounded,
-                          color: Color(0xFFFF5252),
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _currentGames.remove(g);
-                          });
-                          widget.onGameRemoved(g);
-                        },
+                      child: g.iconBytes != null
+                          ? Image.memory(g.iconBytes!, width: 32, height: 32)
+                          : const Icon(
+                              Icons.gamepad,
+                              color: Colors.white70,
+                              size: 20,
+                            ),
+                    ),
+                    title: Text(
+                      g.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  )
-                  .toList(),
+                    subtitle: Text(
+                      g.totalPlayedSecondsToday < 60
+                          ? '${g.totalPlayedSecondsToday} detik hari ini'
+                          : '${g.totalPlayedSecondsToday ~/ 60} menit hari ini',
+                      style: const TextStyle(
+                        color: Color(0xFF666666),
+                        fontSize: 12,
+                      ),
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(
+                        Icons.remove_circle_outline_rounded,
+                        color: Color(0xFFFF5252),
+                      ),
+                      onPressed: () => _removeGame(g),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 12),
 
-          // ── App Lock Permission ──
+          // ── Usage Permission ──
           SectionCard(
             title: 'Izin Proteksi Keamanan',
             icon: Icons.security_rounded,
@@ -265,7 +312,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Izin ini diperlukan agar aplikasi bisa mendeteksi game yang dibuka di luar aplikasi dan menguncinya otomatis.',
+                  'Izin ini diperlukan agar aplikasi bisa mendeteksi game yang dibuka di luar aplikasi.',
                   style: TextStyle(color: Color(0xFF666666), fontSize: 12),
                 ),
                 const SizedBox(height: 12),
@@ -273,13 +320,18 @@ class _ParentDashboardState extends State<ParentDashboard> {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () async {
-                      bool hasPermission = await UsageStats.checkUsagePermission() ?? false;
+                      final hasPermission =
+                          await UsageStats.checkUsagePermission() ?? false;
                       if (!hasPermission) {
                         UsageStats.grantUsagePermission();
                       } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Izin sudah diberikan ✓')),
-                        );
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Izin sudah diberikan ✓'),
+                            ),
+                          );
+                        }
                       }
                     },
                     icon: const Icon(Icons.vpn_key_rounded),
@@ -298,7 +350,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
           ),
           const SizedBox(height: 12),
 
-          // ── Add Game Button ──
+          // ── Add Game ──
           FilledButton.icon(
             onPressed: () async {
               final result = await Navigator.push(
@@ -350,23 +402,25 @@ class _ParentDashboardState extends State<ParentDashboard> {
                         Navigator.pop(context);
                         widget.onResetDay();
                         setState(() {
-                          for (var g in _currentGames) {
+                          for (final g in _currentGames) {
                             g.totalPlayedSecondsToday = 0;
                             g.isLocked = false;
                           }
                         });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text(
-                              'Data hari ini telah direset ✓',
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text(
+                                'Data hari ini telah direset ✓',
+                              ),
+                              backgroundColor: const Color(0xFF4CAF50),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
-                            backgroundColor: const Color(0xFF4CAF50),
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        );
+                          );
+                        }
                       },
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFFFF5252),

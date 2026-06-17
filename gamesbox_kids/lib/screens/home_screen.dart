@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:installed_apps/installed_apps.dart';
 import 'package:usage_stats/usage_stats.dart';
@@ -16,32 +17,128 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // ── Time state ──────────────────────────────────────────────────────────
   int _dailyLimitMinutes = 60;
   int _totalPlayedSecondsToday = 0;
-  bool _isLoading = true;
-  String _kidName = 'Anak'; // UX-K-02
 
+  // ── Game list state ──────────────────────────────────────────────────────
   List<GameEntry> _games = [];
+  bool _isLoading = true;
+
+  // ── User ────────────────────────────────────────────────────────────────
+  String _kidName = 'Anak';
+
+  // ── Subscriptions / timers ───────────────────────────────────────────────
+  StreamSubscription<List<GameEntry>>? _gamesSub;
   Timer? _monitorTimer;
-  Timer? _refreshTimer; // UX-K-06: refresh remaining time every minute
+  Timer? _refreshTimer; // UX-K-06: live countdown
+
   final bool _isLockingEnabled = true;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _loadTimeAndUser();
+    _subscribeToGames(); // ← replaces one-shot _loadData for games
     _startMonitoring();
-    _startLiveTimer(); // UX-K-06
+    _startLiveTimer();
   }
 
   @override
   void dispose() {
+    _gamesSub?.cancel();
     _monitorTimer?.cancel();
     _refreshTimer?.cancel();
     super.dispose();
   }
 
-  // ─── UX-K-06: live countdown ─────────────────────────────────────────────
+  // ── Load non-game data (limit, played, name) ─────────────────────────────
+
+  Future<void> _loadTimeAndUser() async {
+    final limit = await StorageService.getDailyLimit();
+    final played = await StorageService.getTotalPlayed();
+    final name = await StorageService.getKidName();
+    if (mounted) {
+      setState(() {
+        _dailyLimitMinutes = limit;
+        _totalPlayedSecondsToday = played;
+        _kidName = name;
+      });
+    }
+  }
+
+  // ── Firebase real-time game stream ────────────────────────────────────────
+
+  /// Subscribe to /allowed_games in Firebase.
+  ///
+  /// For each emission:
+  ///   1. Receive [GameEntry] list (no icons yet) from [GameSyncService].
+  ///   2. Enrich each entry with the installed-app icon + played time.
+  ///   3. Apply lock state based on remaining time.
+  void _subscribeToGames() {
+    _gamesSub = GameSyncService.streamGames().listen(
+      (remoteGames) async {
+        if (!mounted) return;
+
+        final played = await StorageService.getTotalPlayed();
+        final limit = await StorageService.getDailyLimit();
+        final allLocked = played >= limit * 60;
+
+        final List<GameEntry> enriched = [];
+        for (final game in remoteGames) {
+          Uint8List? icon = game.iconBytes;
+
+          // Try to load icon from installed apps if not cached
+          if (icon == null) {
+            try {
+              final appInfo =
+                  await InstalledApps.getAppInfo(game.packageName);
+              icon = appInfo?.icon;
+            } catch (_) {
+              // App may not be installed on this device — show without icon
+            }
+          }
+
+          final playedForGame =
+              await StorageService.getGamePlayed(game.name);
+
+          enriched.add(GameEntry(
+            name: game.name,
+            packageName: game.packageName,
+            iconBytes: icon,
+            isLocked: game.isLocked || allLocked,
+            totalPlayedSecondsToday: playedForGame,
+          ));
+        }
+
+        if (mounted) {
+          setState(() {
+            _games = enriched;
+            _isLoading = false;
+            _totalPlayedSecondsToday = played;
+            _dailyLimitMinutes = limit;
+          });
+        }
+      },
+      onError: (_) async {
+        // Firebase unavailable — fall back to local cache
+        if (!mounted) return;
+        final local = await StorageService.getGames();
+        final played = await StorageService.getTotalPlayed();
+        final limit = await StorageService.getDailyLimit();
+        if (mounted) {
+          setState(() {
+            _games = local;
+            _isLoading = false;
+            _totalPlayedSecondsToday = played;
+            _dailyLimitMinutes = limit;
+          });
+        }
+      },
+    );
+  }
+
+  // ── UX-K-06: live countdown ──────────────────────────────────────────────
 
   void _startLiveTimer() {
     _refreshTimer = Timer.periodic(const Duration(minutes: 1), (_) async {
@@ -51,12 +148,11 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // ─── App monitoring (detect foreground game) ─────────────────────────────
+  // ── App monitoring ───────────────────────────────────────────────────────
 
   void _startMonitoring() {
     _monitorTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
       if (!_isLockingEnabled) return;
-
       final hasPermission =
           await UsageStats.checkUsagePermission() ?? false;
       if (!hasPermission) return;
@@ -96,45 +192,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // ─── Data loading ─────────────────────────────────────────────────────────
-
-  Future<void> _loadData() async {
-    final limit = await StorageService.getDailyLimit();
-    final playedSeconds = await StorageService.getTotalPlayed();
-    final storedGames = await StorageService.getGames();
-    final name = await StorageService.getKidName(); // UX-K-02
-
-    final List<GameEntry> updatedGames = [];
-    for (final game in storedGames) {
-      try {
-        final app = await InstalledApps.getAppInfo(game.packageName);
-        updatedGames.add(
-          GameEntry(
-            name: game.name,
-            packageName: game.packageName,
-            iconBytes: app?.icon,
-            isLocked: game.isLocked || (playedSeconds >= limit * 60),
-            totalPlayedSecondsToday:
-                await StorageService.getGamePlayed(game.name),
-          ),
-        );
-      } catch (_) {
-        updatedGames.add(game);
-      }
-    }
-
-    if (mounted) {
-      setState(() {
-        _games = updatedGames;
-        _dailyLimitMinutes = limit;
-        _totalPlayedSecondsToday = playedSeconds;
-        _kidName = name; // UX-K-02
-        _isLoading = false;
-      });
-    }
-  }
-
-  // ─── Computed props ───────────────────────────────────────────────────────
+  // ── Computed ─────────────────────────────────────────────────────────────
 
   int get _remainingSeconds =>
       (_dailyLimitMinutes * 60 - _totalPlayedSecondsToday)
@@ -145,24 +203,26 @@ class _HomeScreenState extends State<HomeScreen> {
       : (_totalPlayedSecondsToday / (_dailyLimitMinutes * 60))
           .clamp(0.0, 1.0);
 
-  // ─── Navigation ───────────────────────────────────────────────────────────
+  // ── Navigation ────────────────────────────────────────────────────────────
 
   void _launchGame(GameEntry game) async {
     if (game.isLocked || _remainingSeconds == 0) {
       _navigateToLockedScreen();
       return;
     }
-    final playedSecondsResult = await Navigator.push<int>(
+    final playedResult = await Navigator.push<int>(
       context,
       MaterialPageRoute(
         builder: (_) => GameSessionScreen(
-            game: game, remainingSeconds: _remainingSeconds),
+          game: game,
+          remainingSeconds: _remainingSeconds,
+        ),
       ),
     );
-    if (playedSecondsResult != null && playedSecondsResult > 0) {
+    if (playedResult != null && playedResult > 0) {
       setState(() {
-        game.totalPlayedSecondsToday += playedSecondsResult;
-        _totalPlayedSecondsToday += playedSecondsResult;
+        game.totalPlayedSecondsToday += playedResult;
+        _totalPlayedSecondsToday += playedResult;
         if (_totalPlayedSecondsToday >= _dailyLimitMinutes * 60) {
           for (final g in _games) g.isLocked = true;
         }
@@ -171,7 +231,6 @@ class _HomeScreenState extends State<HomeScreen> {
       await StorageService.saveGamePlayed(
           game.name, game.totalPlayedSecondsToday);
 
-      // Check if we just ran out of time
       if (_remainingSeconds == 0 && mounted) {
         _navigateToLockedScreen();
       }
@@ -181,13 +240,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _navigateToLockedScreen() async {
     final extraMinutes = await Navigator.push<int>(
       context,
-      MaterialPageRoute(
-        builder: (_) => const LockedScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const LockedScreen()),
     );
     if (extraMinutes != null && extraMinutes > 0 && mounted) {
-      // LockedScreen already saved the new limit; reload data
-      await _loadData();
+      await _loadTimeAndUser();
     }
   }
 
@@ -219,10 +275,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   });
                 },
                 onGameRemoved: (game) async {
-                  setState(() => _games.remove(game));
-                  await StorageService.saveGames(_games);
+                  // Remove from Firebase + local
+                  await GameSyncService.removeGame(
+                      packageName: game.packageName);
+                  // The stream will emit the updated list automatically
                 },
-                onGameAdded: () => _loadData(),
+                onGameAdded: () {
+                  // No manual reload needed — stream handles it
+                },
               ),
             ),
           );
@@ -231,7 +291,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ─── Build ────────────────────────────────────────────────────────────────
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -247,7 +307,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHeader() {
-    final isLow = _remainingSeconds < 600; // < 10 minutes
+    final isLow = _remainingSeconds < 600;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 60, 24, 32),
@@ -267,10 +327,8 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // UX-K-02: greeting with real name + initial avatar
               Row(
                 children: [
-                  // Avatar circle
                   Container(
                     width: 40,
                     height: 40,
@@ -302,7 +360,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              // Parent dashboard access
               GestureDetector(
                 onTap: _openParentDashboard,
                 child: Container(
@@ -318,7 +375,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(height: 28),
-          // UX-K-06: TimerCard — updates every minute via _refreshTimer
           TimerCard(
             remainingMinutes: _remainingSeconds ~/ 60,
             dailyLimit: _dailyLimitMinutes,
@@ -336,18 +392,19 @@ class _HomeScreenState extends State<HomeScreen> {
                 border: Border.all(
                     color: Colors.red.withValues(alpha: 0.4)),
               ),
-              child: Row(
+              child: const Row(
                 mainAxisSize: MainAxisSize.min,
-                children: const [
+                children: [
                   Icon(Icons.warning_amber_rounded,
                       color: Colors.orangeAccent, size: 16),
                   SizedBox(width: 8),
                   Text(
                     'Sisa waktu kurang dari 10 menit!',
                     style: TextStyle(
-                        color: Colors.orangeAccent,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600),
+                      color: Colors.orangeAccent,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -362,22 +419,62 @@ class _HomeScreenState extends State<HomeScreen> {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        const Text(
-          'Game Tersedia',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF2D3142),
-          ),
+        // Header row with sync badge
+        Row(
+          children: [
+            const Text(
+              'Game Tersedia',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2D3142),
+              ),
+            ),
+            const Spacer(),
+            // Small live-sync badge so child can see list is real-time
+            if (!_isLoading)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                      color: Colors.green.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Live',
+                      style: TextStyle(
+                        color: Colors.green.withValues(alpha: 0.8),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 20),
 
-        // UX-K-05: skeleton loader while data is loading
+        // UX-K-05: skeleton while loading
         if (_isLoading)
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            gridDelegate:
+                const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               mainAxisSpacing: 16,
               crossAxisSpacing: 16,
@@ -397,8 +494,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   'Belum ada game yang diizinkan.\nMinta orang tuamu untuk menambahkan.',
                   textAlign: TextAlign.center,
-                  style:
-                      TextStyle(color: Colors.grey[500], fontSize: 14),
+                  style: TextStyle(
+                    color: Colors.grey[500],
+                    fontSize: 14,
+                  ),
                 ),
               ],
             ),
@@ -407,7 +506,8 @@ class _HomeScreenState extends State<HomeScreen> {
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            gridDelegate:
+                const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               mainAxisSpacing: 16,
               crossAxisSpacing: 16,

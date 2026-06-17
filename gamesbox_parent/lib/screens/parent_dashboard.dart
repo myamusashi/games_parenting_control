@@ -1,14 +1,16 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:gamesbox_common/gamesbox_common.dart';
+import 'package:gamesbox_common/services/game_sync_service.dart';
 import 'package:installed_apps/installed_apps.dart';
 import 'package:usage_stats/usage_stats.dart';
-import 'package:gamesbox_common/gamesbox_common.dart';
-import '../widgets/section_card.dart';
 import 'app_selection_screen.dart';
 
 class ParentDashboard extends StatefulWidget {
   final List<GameEntry> games;
   final int dailyLimitMinutes;
-  final int totalPlayedToday; // minutes
+  final int totalPlayedToday;
   final ValueChanged<int> onLimitChanged;
   final VoidCallback onResetDay;
   final ValueChanged<GameEntry> onGameRemoved;
@@ -41,29 +43,32 @@ class _ParentDashboardState extends State<ParentDashboard> {
   }
 
   Future<void> _reloadGames() async {
-    final games = await StorageService.getGames();
-    final List<GameEntry> updatedGames = [];
-    
-    for (var game in games) {
-      try {
-        final app = await InstalledApps.getAppInfo(game.packageName);
-        updatedGames.add(GameEntry(
-          name: game.name,
-          packageName: game.packageName,
-          iconBytes: app?.icon,
-          isLocked: game.isLocked,
-          totalPlayedSecondsToday: await StorageService.getGamePlayed(game.name),
-        ));
-      } catch (e) {
-        updatedGames.add(game);
+    final games = await GameSyncService.fetchGames();
+    final List<GameEntry> enriched = [];
+    for (final game in games) {
+      Uint8List? icon = game.iconBytes;
+      if (icon == null) {
+        try {
+          final app = await InstalledApps.getAppInfo(game.packageName, null);
+          icon = app?.icon;
+        } catch (_) {}
       }
+      enriched.add(GameEntry(
+        name: game.name,
+        packageName: game.packageName,
+        iconBytes: icon,
+        isLocked: game.isLocked,
+        totalPlayedSecondsToday:
+            await StorageService.getGamePlayed(game.name),
+      ));
     }
-    
-    if (mounted) {
-      setState(() {
-        _currentGames = updatedGames;
-      });
-    }
+    if (mounted) setState(() => _currentGames = enriched);
+  }
+
+  Future<void> _removeGame(GameEntry game) async {
+    await GameSyncService.removeGame(packageName: game.packageName);
+    setState(() => _currentGames.remove(game));
+    widget.onGameRemoved(game);
   }
 
   @override
@@ -77,10 +82,8 @@ class _ParentDashboardState extends State<ParentDashboard> {
           children: [
             Icon(Icons.shield_rounded, color: Color(0xFF6C63FF), size: 20),
             SizedBox(width: 8),
-            Text(
-              'Parent Dashboard',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
+            Text('Parent Dashboard',
+                style: TextStyle(fontWeight: FontWeight.w700)),
           ],
         ),
         elevation: 0,
@@ -88,7 +91,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          // ── Summary Card ──
+          // Summary Card
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -102,10 +105,9 @@ class _ParentDashboardState extends State<ParentDashboard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Laporan Hari Ini',
-                  style: TextStyle(color: Colors.white70, fontSize: 12),
-                ),
+                const Text('Laporan Hari Ini',
+                    style:
+                        TextStyle(color: Colors.white70, fontSize: 12)),
                 const SizedBox(height: 4),
                 Text(
                   '${widget.totalPlayedToday} / ${widget.dailyLimitMinutes} menit',
@@ -118,42 +120,44 @@ class _ParentDashboardState extends State<ParentDashboard> {
                 const SizedBox(height: 12),
                 Row(
                   children: _currentGames
-                      .map(
-                        (g) => Expanded(
-                          child: Column(
-                            children: [
-                              Container(
-                                width: 24,
-                                height: 24,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(4),
+                      .map((g) => Expanded(
+                            child: Column(
+                              children: [
+                                Container(
+                                  width: 24,
+                                  height: 24,
+                                  decoration: BoxDecoration(
+                                      borderRadius:
+                                          BorderRadius.circular(4)),
+                                  child: g.iconBytes != null
+                                      ? Image.memory(g.iconBytes!)
+                                      : const Icon(Icons.gamepad,
+                                          color: Colors.white70,
+                                          size: 18),
                                 ),
-                                child: g.iconBytes != null
-                                    ? Image.memory(g.iconBytes!)
-                                    : const Icon(Icons.gamepad, color: Colors.white70, size: 18),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                g.totalPlayedSecondsToday < 60
-                                    ? '${g.totalPlayedSecondsToday}s'
-                                    : '${g.totalPlayedSecondsToday ~/ 60}m',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
+                                const SizedBox(height: 2),
+                                Text(
+                                  g.totalPlayedSecondsToday < 60
+                                      ? '${g.totalPlayedSecondsToday}s'
+                                      : '${g.totalPlayedSecondsToday ~/ 60}m',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                g.name.length > 8 ? '${g.name.substring(0, 7)}...' : g.name,
-                                style: const TextStyle(
-                                  color: Colors.white60,
-                                  fontSize: 9,
+                                Text(
+                                  g.name.length > 8
+                                      ? '${g.name.substring(0, 7)}...'
+                                      : g.name,
+                                  style: const TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 9,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
+                              ],
+                            ),
+                          ))
                       .toList(),
                 ),
               ],
@@ -161,7 +165,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
           ),
           const SizedBox(height: 20),
 
-          // ── Daily Limit Setting ──
+          // Daily Limit
           SectionCard(
             title: 'Batas Waktu Harian',
             icon: Icons.timer_rounded,
@@ -183,20 +187,19 @@ class _ParentDashboardState extends State<ParentDashboard> {
                   activeColor: const Color(0xFF6C63FF),
                   inactiveColor: const Color(0xFF2A2A3E),
                   label: '$_tempLimit menit',
-                  onChanged: (v) => setState(() => _tempLimit = v.round()),
+                  onChanged: (v) =>
+                      setState(() => _tempLimit = v.round()),
                   onChangeEnd: (v) => widget.onLimitChanged(v.round()),
                 ),
-                Row(
+                const Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    Text(
-                      '15m',
-                      style: TextStyle(color: Color(0xFF666666), fontSize: 11),
-                    ),
-                    Text(
-                      '3 jam',
-                      style: TextStyle(color: Color(0xFF666666), fontSize: 11),
-                    ),
+                  children: [
+                    Text('15m',
+                        style: TextStyle(
+                            color: Color(0xFF666666), fontSize: 11)),
+                    Text('3 jam',
+                        style: TextStyle(
+                            color: Color(0xFF666666), fontSize: 11)),
                   ],
                 ),
               ],
@@ -204,61 +207,77 @@ class _ParentDashboardState extends State<ParentDashboard> {
           ),
           const SizedBox(height: 12),
 
-          // ── Game List ──
+          // Game List
           SectionCard(
             title: 'Daftar Game Diizinkan',
             icon: Icons.sports_esports_rounded,
             child: Column(
-              children: _currentGames
-                  .map(
-                    (g) => ListTile(
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: Colors.green.withValues(alpha: 0.2)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.sync_rounded,
+                          color: Colors.green, size: 12),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Perubahan langsung tersinkron ke perangkat anak',
+                        style: TextStyle(
+                          color: Colors.green.withValues(alpha: 0.8),
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ..._currentGames.map((g) => ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.05),
+                          color:
+                              Colors.white.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: g.iconBytes != null
-                            ? Image.memory(g.iconBytes!, width: 32, height: 32)
-                            : const Icon(Icons.gamepad, color: Colors.white70, size: 20),
+                            ? Image.memory(g.iconBytes!,
+                                width: 32, height: 32)
+                            : const Icon(Icons.gamepad,
+                                color: Colors.white70, size: 20),
                       ),
-                      title: Text(
-                        g.name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      title: Text(g.name,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600)),
                       subtitle: Text(
                         g.totalPlayedSecondsToday < 60
                             ? '${g.totalPlayedSecondsToday} detik hari ini'
                             : '${g.totalPlayedSecondsToday ~/ 60} menit hari ini',
                         style: const TextStyle(
-                          color: Color(0xFF666666),
-                          fontSize: 12,
-                        ),
+                            color: Color(0xFF666666), fontSize: 12),
                       ),
                       trailing: IconButton(
                         icon: const Icon(
                           Icons.remove_circle_outline_rounded,
                           color: Color(0xFFFF5252),
                         ),
-                        onPressed: () {
-                          setState(() {
-                            _currentGames.remove(g);
-                          });
-                          widget.onGameRemoved(g);
-                        },
+                        onPressed: () => _removeGame(g),
                       ),
-                    ),
-                  )
-                  .toList(),
+                    )),
+              ],
             ),
           ),
           const SizedBox(height: 12),
 
-          // ── App Lock Permission ──
+          // Usage Permission
           SectionCard(
             title: 'Izin Proteksi Keamanan',
             icon: Icons.security_rounded,
@@ -266,25 +285,33 @@ class _ParentDashboardState extends State<ParentDashboard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Izin ini diperlukan agar aplikasi bisa mendeteksi game yang dibuka di luar aplikasi dan menguncinya otomatis.',
-                  style: TextStyle(color: Color(0xFF666666), fontSize: 12),
+                  'Izin ini diperlukan agar aplikasi bisa mendeteksi game yang dibuka di luar aplikasi.',
+                  style:
+                      TextStyle(color: Color(0xFF666666), fontSize: 12),
                 ),
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () async {
-                      bool hasPermission = await UsageStats.checkUsagePermission() ?? false;
-                      if (!hasPermission) {
+                      final has =
+                          await UsageStats.checkUsagePermission() ??
+                              false;
+                      if (!has) {
                         UsageStats.grantUsagePermission();
                       } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Izin sudah diberikan ✓')),
-                        );
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content:
+                                    Text('Izin sudah diberikan ✓')),
+                          );
+                        }
                       }
                     },
                     icon: const Icon(Icons.vpn_key_rounded),
-                    label: const Text('Berikan Izin Akses Penggunaan'),
+                    label:
+                        const Text('Berikan Izin Akses Penggunaan'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF1E1E2E),
                       foregroundColor: const Color(0xFF6C63FF),
@@ -299,12 +326,13 @@ class _ParentDashboardState extends State<ParentDashboard> {
           ),
           const SizedBox(height: 12),
 
-          // ── Add Game Button ──
+          // Add Game
           FilledButton.icon(
             onPressed: () async {
               final result = await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const AppSelectionScreen()),
+                MaterialPageRoute(
+                    builder: (_) => const AppSelectionScreen()),
               );
               if (result == true) {
                 await _reloadGames();
@@ -323,7 +351,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
           ),
           const SizedBox(height: 12),
 
-          // ── Reset ──
+          // Reset
           OutlinedButton.icon(
             onPressed: () {
               showDialog(
@@ -333,12 +361,10 @@ class _ParentDashboardState extends State<ParentDashboard> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  title: const Text(
-                    'Reset Data Hari Ini?',
-                    style: TextStyle(color: Colors.white),
-                  ),
+                  title: const Text('Reset Data Hari Ini?',
+                      style: TextStyle(color: Colors.white)),
                   content: const Text(
-                    'Semua waktu bermain hari ini akan direset dan game yang terkunci akan dibuka kembali.',
+                    'Semua waktu bermain hari ini akan direset.',
                     style: TextStyle(color: Color(0xFFAAAAAA)),
                   ),
                   actions: [
@@ -351,27 +377,14 @@ class _ParentDashboardState extends State<ParentDashboard> {
                         Navigator.pop(context);
                         widget.onResetDay();
                         setState(() {
-                          for (var g in _currentGames) {
+                          for (final g in _currentGames) {
                             g.totalPlayedSecondsToday = 0;
                             g.isLocked = false;
                           }
                         });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text(
-                              'Data hari ini telah direset ✓',
-                            ),
-                            backgroundColor: const Color(0xFF4CAF50),
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        );
                       },
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF5252),
-                      ),
+                          backgroundColor: const Color(0xFFFF5252)),
                       child: const Text('Reset'),
                     ),
                   ],
