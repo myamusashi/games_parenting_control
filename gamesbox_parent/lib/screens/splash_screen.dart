@@ -1,8 +1,7 @@
 import 'package:gamesbox_common/gamesbox_common.dart';
-
-import 'register_screen.dart';
+import 'package:gamesbox_parent/screens/parent_dashboard_screen.dart';
+import 'package:gamesbox_parent/screens/register_screen_parent.dart';
 import 'package:flutter/material.dart';
-import 'home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -40,7 +39,7 @@ class _SplashScreenState extends State<SplashScreen>
             context,
             MaterialPageRoute(
               builder: (_) =>
-                  registered ? const HomeScreen() : const RegisterScreen(),
+                  registered ? const ParentDashboardScreen() : const RegisterScreen(),
             ),
           );
         }

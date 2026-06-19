@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
 import 'package:gamesbox_common/gamesbox_common.dart';
-import 'home_screen.dart';
+import 'parent_dashboard_screen.dart';
 
 class PairingGuideScreen extends StatefulWidget {
   const PairingGuideScreen({super.key});
@@ -115,7 +115,7 @@ class _PairingGuideScreenState extends State<PairingGuideScreen>
   void _proceedToHome() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
+      MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
     );
   }
 
