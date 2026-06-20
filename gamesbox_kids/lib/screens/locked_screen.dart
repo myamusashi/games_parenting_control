@@ -12,7 +12,9 @@ import 'package:firebase_database/firebase_database.dart';
 /// Phase 4 addition: after a successful QR scan, writes a confirmation
 /// notification to the parent's RTDB inbox at notifications/<parentId>/<key>.
 class LockedScreen extends StatefulWidget {
-  const LockedScreen({super.key});
+  final bool requireParentUnlockOnly;
+
+  const LockedScreen({super.key, this.requireParentUnlockOnly = false});
 
   @override
   State<LockedScreen> createState() => _LockedScreenState();
@@ -85,14 +87,21 @@ class _LockedScreenState extends State<LockedScreen> {
         expectedKidId: _kidId!,
       );
 
-      // Apply extra time to local limit
-      final currentLimit = await StorageService.getDailyLimit();
-      await StorageService.saveDailyLimit(currentLimit + extraMinutes);
+      if (!widget.requireParentUnlockOnly) {
+        // Apply extra time only for time-limit unlocks, not app-start login.
+        final currentLimit = await StorageService.getDailyLimit();
+        await StorageService.saveDailyLimit(currentLimit + extraMinutes);
+      }
 
       // Phase 4: notify parent via RTDB
       await _notifyParentUnlock(extraMinutes);
 
-      if (mounted) Navigator.pop(context, extraMinutes);
+      if (!mounted) return;
+      if (widget.requireParentUnlockOnly) {
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        Navigator.pop(context, extraMinutes);
+      }
     } catch (e) {
       _showError(e.toString().replaceFirst('Exception: ', ''));
     }
@@ -110,13 +119,18 @@ class _LockedScreenState extends State<LockedScreen> {
       if (parentUid == null || parentUid.isEmpty) return;
 
       final name = _kidName ?? 'Anak';
+      final isAppUnlock = widget.requireParentUnlockOnly;
       await FirebaseDatabase.instance
           .ref('notifications/$parentUid')
           .push()
           .set({
-            'title': '✅ $name mendapat waktu tambahan',
-            'body': '$name menggunakan QR unlock untuk +$extraMinutes menit.',
-            'type': 'unlocked',
+            'title': isAppUnlock
+                ? '✅ $name membuka aplikasi'
+                : '✅ $name mendapat waktu tambahan',
+            'body': isAppUnlock
+                ? '$name membuka aplikasi dengan QR unlock orang tua.'
+                : '$name menggunakan QR unlock untuk +$extraMinutes menit.',
+            'type': isAppUnlock ? 'app_unlocked' : 'unlocked',
             'timestamp': DateTime.now().toIso8601String(),
             'read': false,
           });
@@ -191,8 +205,10 @@ class _LockedScreenState extends State<LockedScreen> {
 
           const SizedBox(height: 32),
 
-          const Text(
-            'Waktu Main Habis!',
+          Text(
+            widget.requireParentUnlockOnly
+                ? 'Aplikasi Terkunci'
+                : 'Waktu Main Habis!',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w900,
@@ -204,7 +220,9 @@ class _LockedScreenState extends State<LockedScreen> {
           const SizedBox(height: 16),
 
           Text(
-            'Istirahat dulu ya! Kamu sudah bermain cukup banyak hari ini. 😊',
+            widget.requireParentUnlockOnly
+                ? 'Minta orang tua untuk membuka aplikasi sebelum mulai bermain.'
+                : 'Istirahat dulu ya! Kamu sudah bermain cukup banyak hari ini. 😊',
             style: TextStyle(
               fontSize: 15,
               color: Colors.white.withValues(alpha: 0.7),
@@ -215,35 +233,35 @@ class _LockedScreenState extends State<LockedScreen> {
 
           const Spacer(flex: 1),
 
-          // Countdown to midnight
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E1E2E),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  'Main lagi dalam',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 13,
+          if (!widget.requireParentUnlockOnly)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1E2E),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    'Main lagi dalam',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 13,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _countdownText,
-                  style: const TextStyle(
-                    fontSize: 36,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF6C63FF),
-                    letterSpacing: 4,
+                  const SizedBox(height: 8),
+                  Text(
+                    _countdownText,
+                    style: const TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF6C63FF),
+                      letterSpacing: 4,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
           const Spacer(flex: 1),
 
@@ -254,9 +272,14 @@ class _LockedScreenState extends State<LockedScreen> {
             child: FilledButton.icon(
               onPressed: () => setState(() => _showScanner = true),
               icon: const Icon(Icons.qr_code_scanner_rounded, size: 24),
-              label: const Text(
-                'Minta Izin Orang Tua',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              label: Text(
+                widget.requireParentUnlockOnly
+                    ? 'Buka dengan QR Orang Tua'
+                    : 'Minta Izin Orang Tua',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF6C63FF),

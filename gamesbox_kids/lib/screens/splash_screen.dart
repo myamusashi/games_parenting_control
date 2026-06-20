@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gamesbox_common/gamesbox_common.dart';
+import 'locked_screen.dart';
 
 /// KidsSplashScreen — shown on every app launch.
 ///
@@ -49,10 +50,17 @@ class _KidsSplashScreenState extends State<KidsSplashScreen>
     final kidId = await StorageService.getKidId();
     if (!mounted) return;
 
-    Navigator.pushReplacementNamed(
-      context,
-      kidId != null && kidId.isNotEmpty ? '/home' : '/pairing',
-    );
+    if (kidId != null && kidId.isNotEmpty) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const LockedScreen(requireParentUnlockOnly: true),
+        ),
+      );
+      return;
+    }
+
+    Navigator.pushReplacementNamed(context, '/pairing');
   }
 
   @override
