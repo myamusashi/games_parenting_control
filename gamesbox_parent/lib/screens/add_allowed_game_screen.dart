@@ -16,6 +16,14 @@ class _AddAllowedGameScreenState extends State<AddAllowedGameScreen> {
   final _packageController = TextEditingController();
   bool _isSaving = false;
 
+  static const _suggestions = [
+    _GameSuggestion('Minecraft', 'com.mojang.minecraftpe'),
+    _GameSuggestion('Roblox', 'com.roblox.client'),
+    _GameSuggestion('YouTube Kids', 'com.google.android.apps.youtube.kids'),
+    _GameSuggestion('Subway Surfers', 'com.kiloo.subwaysurf'),
+    _GameSuggestion('Duolingo', 'com.duolingo'),
+  ];
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -28,9 +36,10 @@ class _AddAllowedGameScreenState extends State<AddAllowedGameScreen> {
 
     setState(() => _isSaving = true);
     try {
+      final packageName = _extractPackageName(_packageController.text.trim());
       final game = AllowedGame(
         name: _nameController.text.trim(),
-        packageName: _packageController.text.trim(),
+        packageName: packageName,
         addedBy: 'parent',
         addedAt: DateTime.now().toUtc().toIso8601String(),
       );
@@ -58,11 +67,55 @@ class _AddAllowedGameScreenState extends State<AddAllowedGameScreen> {
   }
 
   String? _validatePackageName(String? value) {
-    final text = value?.trim() ?? '';
+    final text = _extractPackageName(value?.trim() ?? '');
     if (text.isEmpty) return 'Package name wajib diisi';
     final valid = RegExp(r'^[a-zA-Z][\w]*(\.[a-zA-Z][\w]*)+$').hasMatch(text);
-    if (!valid) return 'Contoh: com.mojang.minecraftpe';
+    if (!valid) return 'Tempel link Play Store atau package name';
     return null;
+  }
+
+  String _extractPackageName(String input) {
+    if (input.isEmpty) return '';
+
+    final uri = Uri.tryParse(input);
+    final id = uri?.queryParameters['id'];
+    if (id != null && id.isNotEmpty) return id.trim();
+
+    final match = RegExp(r'id=([^&\s]+)').firstMatch(input);
+    if (match != null) return Uri.decodeComponent(match.group(1)!);
+
+    return input.trim();
+  }
+
+  String _guessNameFromPackage(String packageName) {
+    final last = packageName.split('.').last;
+    return last
+        .replaceAll(RegExp(r'[_-]+'), ' ')
+        .split(' ')
+        .where((part) => part.isNotEmpty)
+        .map((part) => part[0].toUpperCase() + part.substring(1))
+        .join(' ');
+  }
+
+  void _useSuggestion(_GameSuggestion suggestion) {
+    setState(() {
+      _nameController.text = suggestion.name;
+      _packageController.text = suggestion.packageName;
+    });
+  }
+
+  void _normalizePackageInput(String value) {
+    final packageName = _extractPackageName(value);
+    if (packageName != value && packageName.isNotEmpty) {
+      _packageController.value = TextEditingValue(
+        text: packageName,
+        selection: TextSelection.collapsed(offset: packageName.length),
+      );
+    }
+
+    if (_nameController.text.trim().isEmpty && packageName.contains('.')) {
+      _nameController.text = _guessNameFromPackage(packageName);
+    }
   }
 
   @override
@@ -87,11 +140,34 @@ class _AddAllowedGameScreenState extends State<AddAllowedGameScreen> {
                 border: Border.all(color: const Color(0xFF2A2A3E)),
               ),
               child: const Text(
-                'Masukkan game yang boleh dimainkan anak. Package name harus sesuai dengan aplikasi di perangkat anak agar bisa dibuka.',
+                'Cara termudah: buka Play Store, pilih game, Share, lalu salin link dan tempel di sini. Package ID akan diambil otomatis.',
                 style: TextStyle(color: Colors.white70, height: 1.4),
               ),
             ),
             const SizedBox(height: 20),
+            const Text(
+              'Pilihan cepat',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _suggestions.map((suggestion) {
+                return ActionChip(
+                  label: Text(suggestion.name),
+                  avatar: const Icon(Icons.add_rounded, size: 16),
+                  onPressed: () => _useSuggestion(suggestion),
+                  backgroundColor: const Color(0xFF1A1A2E),
+                  labelStyle: const TextStyle(color: Colors.white),
+                  side: const BorderSide(color: Color(0xFF2A2A3E)),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 24),
             TextFormField(
               controller: _nameController,
               style: const TextStyle(color: Colors.white),
@@ -116,10 +192,11 @@ class _AddAllowedGameScreenState extends State<AddAllowedGameScreen> {
               autocorrect: false,
               enableSuggestions: false,
               decoration: _inputDecoration(
-                label: 'Package name',
-                hint: 'com.mojang.minecraftpe',
+                label: 'Play Store link atau package name',
+                hint: 'https://play.google.com/store/apps/details?id=com...',
                 icon: Icons.android_rounded,
               ),
+              onChanged: _normalizePackageInput,
               validator: _validatePackageName,
               onFieldSubmitted: (_) => _save(),
             ),
@@ -172,4 +249,11 @@ class _AddAllowedGameScreenState extends State<AddAllowedGameScreen> {
       ),
     );
   }
+}
+
+class _GameSuggestion {
+  final String name;
+  final String packageName;
+
+  const _GameSuggestion(this.name, this.packageName);
 }
