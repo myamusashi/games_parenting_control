@@ -249,6 +249,48 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _handleLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => PasswordDialog(
+        onSuccess: () async {
+          Navigator.pop(dialogCtx); // Close the PIN dialog
+          
+          final confirm = await showDialog<bool>(
+            context: context,
+            builder: (confirmCtx) => AlertDialog(
+              backgroundColor: const Color(0xFF1E1E2E),
+              title: const Text('Keluar Aplikasi', style: TextStyle(color: Colors.white)),
+              content: const Text(
+                'Apakah Anda yakin ingin memutuskan hubungan perangkat ini? Seluruh data lokal akan dihapus.',
+                style: TextStyle(color: Colors.white70),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(confirmCtx, false),
+                  child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(confirmCtx, true),
+                  style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+                  child: const Text('Keluar'),
+                ),
+              ],
+            ),
+          );
+
+          if (confirm == true && mounted) {
+            KidSyncService.stopSync();
+            await StorageService.clearAll();
+            if (mounted) {
+              Navigator.pushNamedAndRemoveUntil(context, '/pairing', (route) => false);
+            }
+          }
+        },
+      ),
+    );
+  }
+
   // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
@@ -317,6 +359,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ],
+              ),
+              IconButton(
+                icon: const Icon(Icons.logout_rounded, color: Colors.white70),
+                tooltip: 'Parent Logout',
+                onPressed: () => _handleLogout(context),
               ),
             ],
           ),

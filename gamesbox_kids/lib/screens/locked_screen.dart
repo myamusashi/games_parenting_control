@@ -107,6 +107,31 @@ class _LockedScreenState extends State<LockedScreen> {
     }
   }
 
+  void _handlePinUnlock(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => PasswordDialog(
+        onSuccess: () async {
+          Navigator.pop(dialogCtx); // close password dialog
+          
+          await _notifyParentUnlock(0);
+
+          if (!mounted) return;
+          if (widget.requireParentUnlockOnly) {
+            Navigator.pushReplacementNamed(context, '/home');
+          } else {
+            // For limit screen, add a default +30 mins extension when unlocked directly by PIN
+            final currentLimit = await StorageService.getDailyLimit();
+            await StorageService.saveDailyLimit(currentLimit + 30);
+            if (mounted) {
+              Navigator.pop(context, 30);
+            }
+          }
+        },
+      ),
+    );
+  }
+
   /// Writes a confirmation notification to the parent's RTDB inbox.
   /// Kept inline here so the kids app has no dependency on the parent app's
   /// notification_service.dart.
@@ -265,7 +290,7 @@ class _LockedScreenState extends State<LockedScreen> {
 
           const Spacer(flex: 1),
 
-          // Ask parent button
+           // Ask parent button
           SizedBox(
             width: double.infinity,
             height: 60,
@@ -283,6 +308,31 @@ class _LockedScreenState extends State<LockedScreen> {
               ),
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF6C63FF),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          SizedBox(
+            width: double.infinity,
+            height: 60,
+            child: OutlinedButton.icon(
+              onPressed: () => _handlePinUnlock(context),
+              icon: const Icon(Icons.pin_rounded, size: 24, color: Colors.white),
+              label: const Text(
+                'Buka dengan PIN Orang Tua',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.white24, width: 2),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
