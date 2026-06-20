@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:installed_apps/installed_apps.dart';
 import 'package:usage_stats/usage_stats.dart';
 import 'package:gamesbox_common/gamesbox_common.dart';
+import '../services/kid_sync_service.dart';
 import '../widgets/game_card.dart';
 import 'game_session_screen.dart';
-import 'parent_dashboard.dart';
 import 'locked_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -29,7 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _kidName = 'Anak';
 
   // ── Subscriptions / timers ───────────────────────────────────────────────
-  StreamSubscription<List<GameEntry>>? _gamesSub;
+  StreamSubscription<List<AllowedGame>>? _gamesSub;
   Timer? _monitorTimer;
   Timer? _refreshTimer; // UX-K-06: live countdown
 
@@ -40,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadTimeAndUser();
     _subscribeToGames(); // ← replaces one-shot _loadData for games
+    _startPresenceSync();
     _startMonitoring();
     _startLiveTimer();
   }
@@ -69,15 +70,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ── Firebase real-time game stream ────────────────────────────────────────
 
-  /// Subscribe to /allowed_games in Firebase.
-  ///
-  /// For each emission:
-  ///   1. Receive [GameEntry] list (no icons yet) from [GameSyncService].
-  ///   2. Enrich each entry with the installed-app icon + played time.
-  ///   3. Apply lock state based on remaining time.
-  void _subscribeToGames() {
-    _gamesSub = GameSyncService.streamGames().listen(
-      (remoteGames) async {
+  Future<void> _startPresenceSync() async {
+    final kidId = await StorageService.getKidId();
+    if (kidId != null && kidId.isNotEmpty) {
+      KidSyncService.startPeriodicSync(kidId);
+    }
+  }
+
+  Future<void> _subscribeToGames() async {
+    final kidId = await StorageService.getKidId();
+    if (kidId == null || kidId.isEmpty) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
+
+    _gamesSub = AllowedGamesService.streamGames(kidId).listen(
+      (allowedGames) async {
         if (!mounted) return;
 
         final played = await StorageService.getTotalPlayed();
@@ -85,18 +93,14 @@ class _HomeScreenState extends State<HomeScreen> {
         final allLocked = played >= limit * 60;
 
         final List<GameEntry> enriched = [];
-        for (final game in remoteGames) {
-          Uint8List? icon = game.iconBytes;
+        for (final game in allowedGames) {
+          Uint8List? icon;
 
-          // Try to load icon from installed apps if not cached
-          if (icon == null) {
-            try {
-              final appInfo =
-                  await InstalledApps.getAppInfo(game.packageName);
-              icon = appInfo?.icon;
-            } catch (_) {
-              // App may not be installed on this device — show without icon
-            }
+          try {
+            final appInfo = await InstalledApps.getAppInfo(game.packageName);
+            icon = appInfo?.icon;
+          } catch (_) {
+            // The parent can allow a game before it is installed on this device.
           }
 
           final playedForGame =
@@ -106,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
             name: game.name,
             packageName: game.packageName,
             iconBytes: icon,
-            isLocked: game.isLocked || allLocked,
+            isLocked: allLocked,
             totalPlayedSecondsToday: playedForGame,
           ));
         }
@@ -121,14 +125,12 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       },
       onError: (_) async {
-        // Firebase unavailable — fall back to local cache
         if (!mounted) return;
-        final local = await StorageService.getGames();
         final played = await StorageService.getTotalPlayed();
         final limit = await StorageService.getDailyLimit();
         if (mounted) {
           setState(() {
-            _games = local;
+            _games = [];
             _isLoading = false;
             _totalPlayedSecondsToday = played;
             _dailyLimitMinutes = limit;
@@ -247,50 +249,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _openParentDashboard() {
-    showDialog(
-      context: context,
-      builder: (_) => PasswordDialog(
-        onSuccess: () {
-          Navigator.pop(context);
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ParentDashboard(
-                games: _games,
-                dailyLimitMinutes: _dailyLimitMinutes,
-                totalPlayedToday: _totalPlayedSecondsToday ~/ 60,
-                onLimitChanged: (val) async {
-                  setState(() => _dailyLimitMinutes = val);
-                  await StorageService.saveDailyLimit(val);
-                },
-                onResetDay: () async {
-                  await StorageService.resetDailyData();
-                  setState(() {
-                    _totalPlayedSecondsToday = 0;
-                    for (final g in _games) {
-                      g.totalPlayedSecondsToday = 0;
-                      g.isLocked = false;
-                    }
-                  });
-                },
-                onGameRemoved: (game) async {
-                  // Remove from Firebase + local
-                  await GameSyncService.removeGame(
-                      packageName: game.packageName);
-                  // The stream will emit the updated list automatically
-                },
-                onGameAdded: () {
-                  // No manual reload needed — stream handles it
-                },
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
@@ -359,18 +317,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ],
-              ),
-              GestureDetector(
-                onTap: _openParentDashboard,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.face_rounded,
-                      color: Colors.white, size: 24),
-                ),
               ),
             ],
           ),

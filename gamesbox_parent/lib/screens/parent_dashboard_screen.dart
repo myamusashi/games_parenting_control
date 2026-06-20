@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
-import 'games_list_screen.dart';
 import 'pairing_setup_screen.dart';
-import 'time_limit_screen.dart';
-import 'store_share_handler.dart';
 import 'child_management_screen.dart';
 import 'package:gamesbox_common/gamesbox_common.dart';
 
@@ -77,33 +74,6 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
               ),
               icon: const Icon(Icons.people_rounded),
               label: const Text('Kelola Anak'),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton.icon(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const GamesListScreen()),
-              ),
-              icon: const Icon(Icons.videogame_asset),
-              label: const Text('Manage Games'),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton.icon(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const StoreShareHandler()),
-              ),
-              icon: const Icon(Icons.share),
-              label: const Text('Add Game from Store'),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton.icon(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const TimeLimitScreen()),
-              ),
-              icon: const Icon(Icons.timer),
-              label: const Text('Daily Time Limits'),
             ),
             const SizedBox(height: 16),
             const Expanded(child: Center(child: Text('Welcome, Parent!'))),

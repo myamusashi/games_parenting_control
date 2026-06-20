@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:gamesbox_common/gamesbox_common.dart';
 import '../services/pairing_service.dart';
-import 'home_screen.dart';
 
 /// Phase 2 — Kids Pairing Screen.
 ///
@@ -27,7 +26,6 @@ class _PairingScreenState extends State<PairingScreen>
   final TextEditingController _codeCtrl = TextEditingController();
 
   bool _isProcessing = false; // prevent duplicate scan processing
-  bool _scannerActive = true; // pause scanner while processing
   String? _errorMessage;
 
   @override
@@ -38,10 +36,8 @@ class _PairingScreenState extends State<PairingScreen>
       // Pause/resume scanner when switching tabs
       if (_tabController.index == 0) {
         _scannerCtrl.start();
-        setState(() => _scannerActive = true);
       } else {
         _scannerCtrl.stop();
-        setState(() => _scannerActive = false);
       }
     });
   }

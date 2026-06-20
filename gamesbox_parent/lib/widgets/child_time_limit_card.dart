@@ -6,12 +6,14 @@ import '../services/time_limit_service.dart';
 /// It streams both the current limit and the played-today seconds from Firebase.
 class ChildTimeLimitCard extends StatefulWidget {
   final ChildModel child;
+  final VoidCallback onOpenDetails;
   final VoidCallback onRemove;
   final VoidCallback onRename;
 
   const ChildTimeLimitCard({
     super.key,
     required this.child,
+    required this.onOpenDetails,
     required this.onRemove,
     required this.onRename,
   });
@@ -105,12 +107,28 @@ class _ChildTimeLimitCardState extends State<ChildTimeLimitCard> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                widget.child.name,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
+                              InkWell(
+                                onTap: widget.onOpenDetails,
+                                borderRadius: BorderRadius.circular(6),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 2, horizontal: 2),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        widget.child.name,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      const Icon(Icons.chevron_right_rounded,
+                                          color: Colors.white54, size: 18),
+                                    ],
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 4),

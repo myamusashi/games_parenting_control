@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
 import 'package:gamesbox_common/gamesbox_common.dart';
+import 'add_allowed_game_screen.dart';
 import '../services/time_limit_service.dart';
 
 /// Phase 3 — UX-P-02: Per-child detail screen.
@@ -201,11 +202,93 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
                 const SizedBox(height: 20),
                 _buildExtraTimeButton(),
                 const SizedBox(height: 20),
+                _buildAllowedGamesCard(),
+                const SizedBox(height: 20),
                 _buildWeeklyHistoryCard(),
                 const SizedBox(height: 20),
                 _buildDangerZone(),
               ]),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAllowedGamesCard() {
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.sports_esports_rounded,
+                  color: Color(0xFF6C63FF), size: 18),
+              const SizedBox(width: 8),
+              const Text(
+                'Game Diizinkan',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AddAllowedGameScreen(child: widget.child),
+                  ),
+                ),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Tambah'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          StreamBuilder<List<AllowedGame>>(
+            stream: AllowedGamesService.streamGames(widget.child.id),
+            builder: (context, snapshot) {
+              final games = snapshot.data ?? [];
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: LinearProgressIndicator(color: Color(0xFF6C63FF)),
+                );
+              }
+              if (games.isEmpty) {
+                return const Text(
+                  'Belum ada game. Tambahkan package game agar muncul di perangkat anak.',
+                  style: TextStyle(color: Colors.white54, fontSize: 13),
+                );
+              }
+              return Column(
+                children: games.map((game) {
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.android_rounded,
+                        color: Color(0xFF6C63FF)),
+                    title: Text(
+                      game.name,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    subtitle: Text(
+                      game.packageName,
+                      style: const TextStyle(color: Colors.white54),
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded,
+                          color: Color(0xFFFF5252)),
+                      onPressed: () => AllowedGamesService.removeGame(
+                        widget.child.id,
+                        game.packageName,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
           ),
         ],
       ),

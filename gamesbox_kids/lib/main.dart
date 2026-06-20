@@ -3,7 +3,6 @@ import 'package:gamesbox_common/gamesbox_common.dart';
 import 'screens/splash_screen.dart';
 import 'screens/pairing_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/games_list_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,7 +27,6 @@ class KidsApp extends StatelessWidget {
       routes: {
         '/pairing': (context) => const PairingScreen(),
         '/home': (context) => const HomeScreen(),
-        '/games': (context) => const GamesListScreen(),
       },
     );
   }

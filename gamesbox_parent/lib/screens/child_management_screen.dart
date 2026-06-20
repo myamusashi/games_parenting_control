@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:gamesbox_common/gamesbox_common.dart';
 import '../services/child_service.dart';
 import '../widgets/child_time_limit_card.dart';
+import 'child_detail_screen.dart';
 
 /// Main screen untuk mengelola daftar anak yang di-pair dengan parent.
 /// Menampilkan child list, time limit controls, dan opsi menambah anak baru.
@@ -206,10 +207,16 @@ class _ChildrenManagementScreenState extends State<ChildrenManagementScreen> {
               ...children.map((child) {
                 return ChildTimeLimitCard(
                   child: child,
+                  onOpenDetails: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ChildDetailScreen(child: child),
+                    ),
+                  ),
                   onRemove: () => _handleRemoveChild(child.id, child.name),
                   onRename: () => _handleRenameChild(child.id, child.name),
                 );
-              }).toList(),
+              }),
               const SizedBox(height: 24),
             ],
           );
@@ -786,4 +793,3 @@ class _AddChildBottomSheetState extends State<AddChildBottomSheet>
     );
   }
 }
-

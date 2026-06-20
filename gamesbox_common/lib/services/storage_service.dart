@@ -1,7 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'dart:convert';
-import '../models/game_entry.dart';
 
 class StorageService {
   // ─── Secure storage instance ──────────────────────────────────────────────
@@ -15,7 +13,6 @@ class StorageService {
   static const String _keyTotalPlayedSeconds = 'total_played_seconds';
   static const String _keyLastResetDate = 'last_reset_date';
   static const String _keyGamePrefix = 'game_sec_';
-  static const String _keyGamesList = 'allowed_games_list';
   static const String _keyFamilyId = 'family_id';
   static const String _keyKidId = 'kid_id';
   static const String _keyKidName = 'kid_name';
@@ -154,21 +151,6 @@ class StorageService {
     final prefs = await SharedPreferences.getInstance();
     await _checkAndResetDailyIfNeeded(prefs);
     return prefs.getInt(_keyGamePrefix + gameName) ?? 0;
-  }
-
-  // ─── GAMES LIST ──────────────────────────────────────────────────────────
-  static Future<void> saveGames(List<GameEntry> games) async {
-    final prefs = await SharedPreferences.getInstance();
-    final String encoded = jsonEncode(games.map((e) => e.toJson()).toList());
-    await prefs.setString(_keyGamesList, encoded);
-  }
-
-  static Future<List<GameEntry>> getGames() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? encoded = prefs.getString(_keyGamesList);
-    if (encoded == null) return [];
-    final List<dynamic> decoded = jsonDecode(encoded);
-    return decoded.map((e) => GameEntry.fromJson(e)).toList();
   }
 
   // ─── RESET DAILY ─────────────────────────────────────────────────────────
