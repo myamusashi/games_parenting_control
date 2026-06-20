@@ -41,6 +41,9 @@ class _KidsSplashScreenState extends State<KidsSplashScreen>
   Future<void> _checkAndNavigate() async {
     if (!mounted) return;
 
+    // Clear all storage on cold start so pairing is required again
+    await StorageService.clearAll();
+
     // Sign in anonymously so Firebase security rules apply (kids app)
     await FirebaseService.signInAnonymously();
 
