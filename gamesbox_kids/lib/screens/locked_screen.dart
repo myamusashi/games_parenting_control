@@ -27,6 +27,7 @@ class _LockedScreenState extends State<LockedScreen> {
   String? _kidId;
   String? _kidName;
   String? _otpSecret;
+  StreamSubscription<TimeLimitModel?>? _limitSub;
 
   @override
   void initState() {
@@ -38,6 +39,7 @@ class _LockedScreenState extends State<LockedScreen> {
   @override
   void dispose() {
     _countdownTimer?.cancel();
+    _limitSub?.cancel();
     super.dispose();
   }
 
@@ -45,6 +47,36 @@ class _LockedScreenState extends State<LockedScreen> {
     _kidId = await StorageService.getKidId();
     _kidName = await StorageService.getKidName();
     _otpSecret = await StorageService.getOtpSecret();
+    _subscribeToLimit();
+  }
+
+  void _subscribeToLimit() {
+    if (_kidId == null || _kidId!.isEmpty) return;
+    _limitSub?.cancel();
+    _limitSub = TimeLimitService.streamLimit(_kidId!).listen((tl) async {
+      if (tl != null) {
+        final limitMinutes = tl.dailySeconds ~/ 60;
+        final currentPlayed = await StorageService.getTotalPlayed();
+        if (currentPlayed < limitMinutes * 60) {
+          // Unlocked remotely! Save the new limit and pop back
+          final currentLimit = await StorageService.getDailyLimit();
+          final oldBaseLimit = await StorageService.getBaseDailyLimit();
+          final extraMins = (currentLimit - oldBaseLimit).clamp(0, 1000);
+          final newLimit = limitMinutes + extraMins;
+          
+          await StorageService.saveBaseDailyLimit(limitMinutes);
+          await StorageService.saveDailyLimit(newLimit);
+
+          if (mounted) {
+            if (widget.requireParentUnlockOnly) {
+              Navigator.pushReplacementNamed(context, '/home');
+            } else {
+              Navigator.pop(context, newLimit - (currentPlayed ~/ 60));
+            }
+          }
+        }
+      }
+    });
   }
 
   void _startCountdown() {

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:gamesbox_common/gamesbox_common.dart';
-import '../services/time_limit_service.dart';
 
 /// A card showing a paired child with their daily time-limit controls.
 /// It streams both the current limit and the played-today seconds from Firebase.

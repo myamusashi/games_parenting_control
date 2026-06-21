@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:installed_apps/installed_apps.dart';
 import 'package:usage_stats/usage_stats.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:gamesbox_common/gamesbox_common.dart';
 import '../services/kid_sync_service.dart';
 import '../widgets/game_card.dart';
@@ -30,6 +31,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ── Subscriptions / timers ───────────────────────────────────────────────
   StreamSubscription<List<AllowedGame>>? _gamesSub;
+  StreamSubscription<TimeLimitModel?>? _limitSub;
+  StreamSubscription<DatabaseEvent>? _extraGrantsSub;
   Timer? _monitorTimer;
   Timer? _refreshTimer; // UX-K-06: live countdown
 
@@ -40,6 +43,8 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadTimeAndUser();
     _subscribeToGames(); // ← replaces one-shot _loadData for games
+    _subscribeToLimit();
+    _subscribeToExtraGrants();
     _startPresenceSync();
     _startMonitoring();
     _startLiveTimer();
@@ -48,6 +53,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _gamesSub?.cancel();
+    _limitSub?.cancel();
+    _extraGrantsSub?.cancel();
     _monitorTimer?.cancel();
     _refreshTimer?.cancel();
     super.dispose();
@@ -65,6 +72,68 @@ class _HomeScreenState extends State<HomeScreen> {
         _totalPlayedSecondsToday = played;
         _kidName = name;
       });
+    }
+  }
+
+  void _subscribeToLimit() async {
+    final kidId = await StorageService.getKidId();
+    if (kidId == null || kidId.isEmpty) return;
+
+    _limitSub = TimeLimitService.streamLimit(kidId).listen((tl) async {
+      if (tl != null) {
+        final limitMinutes = tl.dailySeconds ~/ 60;
+        final currentLimit = await StorageService.getDailyLimit();
+        final oldBaseLimit = await StorageService.getBaseDailyLimit();
+        final extraMins = (currentLimit - oldBaseLimit).clamp(0, 1000);
+        final newLimit = limitMinutes + extraMins;
+        
+        await StorageService.saveBaseDailyLimit(limitMinutes);
+        await StorageService.saveDailyLimit(newLimit);
+        
+        if (mounted) {
+          setState(() {
+            _dailyLimitMinutes = newLimit;
+          });
+          _checkLockState();
+        }
+      }
+    });
+  }
+
+  void _subscribeToExtraGrants() async {
+    final kidId = await StorageService.getKidId();
+    if (kidId == null || kidId.isEmpty) return;
+
+    _extraGrantsSub = FirebaseDatabase.instance
+        .ref('kids/$kidId/extraGrants')
+        .onChildAdded
+        .listen((event) async {
+      final snap = event.snapshot;
+      if (!snap.exists || snap.value == null) return;
+      final data = snap.value as Map<dynamic, dynamic>;
+      final applied = data['applied'] as bool? ?? false;
+      if (!applied) {
+        final minutes = (data['minutes'] as num?)?.toInt() ?? 0;
+        if (minutes > 0) {
+          final currentLimit = await StorageService.getDailyLimit();
+          await StorageService.saveDailyLimit(currentLimit + minutes);
+          
+          await snap.ref.child('applied').set(true);
+          
+          if (mounted) {
+            setState(() {
+              _dailyLimitMinutes = currentLimit + minutes;
+            });
+            _checkLockState();
+          }
+        }
+      }
+    });
+  }
+
+  void _checkLockState() {
+    if (_totalPlayedSecondsToday >= _dailyLimitMinutes * 60) {
+      _navigateToLockedScreen();
     }
   }
 
@@ -274,11 +343,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (confirm == true && mounted) {
+      final nav = Navigator.of(context);
       KidSyncService.stopSync();
       await StorageService.clearAll();
-      if (mounted) {
-        Navigator.pushNamedAndRemoveUntil(context, '/pairing', (route) => false);
-      }
+      nav.pushNamedAndRemoveUntil('/pairing', (route) => false);
     }
   }
 

@@ -10,6 +10,7 @@ class StorageService {
   // ─── Local storage keys (non-sensitive) ───────────────────────────────────
   static const String _keyIsRegistered = 'is_registered';
   static const String _keyDailyLimit = 'daily_limit';
+  static const String _keyBaseDailyLimit = 'base_daily_limit';
   static const String _keyTotalPlayedSeconds = 'total_played_seconds';
   static const String _keyLastResetDate = 'last_reset_date';
   static const String _keyGamePrefix = 'game_sec_';
@@ -129,6 +130,16 @@ class StorageService {
     return prefs.getInt(_keyDailyLimit) ?? 60;
   }
 
+  static Future<void> saveBaseDailyLimit(int limitMinutes) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyBaseDailyLimit, limitMinutes);
+  }
+
+  static Future<int> getBaseDailyLimit() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_keyBaseDailyLimit) ?? 60;
+  }
+
   // ─── TOTAL PLAYED TIME ───────────────────────────────────────────────────
   static Future<void> saveTotalPlayed(int seconds) async {
     final prefs = await SharedPreferences.getInstance();
@@ -163,6 +174,11 @@ class StorageService {
         await prefs.setInt(key, 0);
       }
     }
+    
+    // Restore daily limit back to base limit on reset
+    final baseLimit = await getBaseDailyLimit();
+    await saveDailyLimit(baseLimit);
+
     await prefs.setString(_keyLastResetDate, _getCurrentDateString());
   }
 

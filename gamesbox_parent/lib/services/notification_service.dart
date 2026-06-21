@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/material.dart' show Color;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:gamesbox_common/gamesbox_common.dart';
 import 'package:gamesbox_parent/services/child_service.dart';
-import 'package:gamesbox_parent/services/time_limit_service.dart';
 
 // ── Top-level FCM background handler ─────────────────────────────────────────
 // Must be top-level (not a class method) per firebase_messaging requirements.

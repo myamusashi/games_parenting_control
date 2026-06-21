@@ -12,6 +12,7 @@ export 'services/firebase_service.dart';
 export 'services/storage_service.dart';
 export 'services/qr_unlock_service.dart';
 export 'services/allowed_games_service.dart';
+export 'services/time_limit_service.dart';
 
 // Shared Widgets
 export 'widgets/section_card.dart';

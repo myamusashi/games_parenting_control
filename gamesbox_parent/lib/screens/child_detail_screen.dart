@@ -5,7 +5,6 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
 import 'package:gamesbox_common/gamesbox_common.dart';
 import 'add_allowed_game_screen.dart';
-import '../services/time_limit_service.dart';
 
 /// Phase 3 — UX-P-02: Per-child detail screen.
 ///
@@ -793,6 +792,7 @@ class _ExtraTimeSheetState extends State<_ExtraTimeSheet> {
   String? _qrData;
   int _refreshCountdown = 300; // 5 minutes
   Timer? _timer;
+  bool _isSending = false;
 
   @override
   void initState() {
@@ -804,6 +804,41 @@ class _ExtraTimeSheetState extends State<_ExtraTimeSheet> {
   void dispose() {
     _timer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _sendDirectly() async {
+    setState(() => _isSending = true);
+    try {
+      final grantRef = FirebaseDatabase.instance
+          .ref('kids/${widget.child.id}/extraGrants')
+          .push();
+          
+      await grantRef.set({
+        'minutes': _selectedMinutes,
+        'grantedAt': DateTime.now().toIso8601String(),
+        'expiresDate': DateTime.now().add(const Duration(minutes: 5)).toIso8601String(),
+        'applied': false,
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ Berhasil mengirim +$_selectedMinutes menit ke ${widget.child.name} secara langsung!'),
+          backgroundColor: const Color(0xFF43A047),
+        ),
+      );
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Gagal mengirim: $e'),
+          backgroundColor: const Color(0xFFFF5252),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSending = false);
+    }
   }
 
   void _generateQr() {
@@ -1034,10 +1069,42 @@ class _ExtraTimeSheetState extends State<_ExtraTimeSheet> {
                         height: 220,
                         child: Center(child: CircularProgressIndicator()),
                       ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Kirim langsung button
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: FilledButton.icon(
+              onPressed: _isSending ? null : _sendDirectly,
+              icon: _isSending
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.send_rounded, size: 20),
+              label: const Text(
+                'Kirim Langsung (Remote)',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF6C63FF),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
             ),
+          ),
 
-            const SizedBox(height: 16),
+          const SizedBox(height: 24),
 
             // Instructions
             Container(
