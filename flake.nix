@@ -62,7 +62,8 @@
                         pkg-config
                         cmake
                         ninja
-						opencode
+                        opencode
+                        codex
                     ];
 
                     shellHook = ''
